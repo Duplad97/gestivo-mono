@@ -18,8 +18,10 @@ import {
 } from '@mui/material';
 import { AudioEngine } from '../features/audio/AudioEngine';
 import { CameraPreview } from '../features/camera/CameraPreview';
+import { CameraStage } from '../features/camera/CameraStage';
 import { useCameraStream } from '../features/camera/useCameraStream';
-import { GestureDetector } from '../features/gestures/GestureDetector';
+import { GestureDetector, type GestureFrame } from '../features/gestures/GestureDetector';
+import { GestureOverlay } from '../features/gestures/GestureOverlay';
 import { mapGestureToAction } from '../features/gestures/GestureMapper';
 import type { GestureEvent } from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
@@ -41,6 +43,7 @@ export const App = (): ReactElement => {
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
   const [gestureError, setGestureError] = useState<string | null>(null);
+  const [gestureFrame, setGestureFrame] = useState<GestureFrame | null>(null);
 
   const audioEngineRef = useRef<AudioEngine>(new AudioEngine());
   const recorderRef = useRef<RecordingController>(new RecordingController());
@@ -186,6 +189,7 @@ export const App = (): ReactElement => {
 
     if (!cameraStream || !videoElement) {
       gestureDetectorRef.current.stop();
+      setGestureFrame(null);
       return;
     }
 
@@ -196,6 +200,10 @@ export const App = (): ReactElement => {
         await gestureDetectorRef.current.start(videoElement, (event) => {
           if (!cancelled) {
             applyGestureEvent(event);
+          }
+        }, (frame) => {
+          if (!cancelled) {
+            setGestureFrame(frame);
           }
         });
         setGestureError(null);
@@ -211,6 +219,7 @@ export const App = (): ReactElement => {
 
     return () => {
       cancelled = true;
+      setGestureFrame(null);
       gestureDetectorRef.current.stop();
     };
   }, [cameraStream, gestureMappings]);
@@ -260,7 +269,10 @@ export const App = (): ReactElement => {
 
           <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
             <Stack spacing={2} flex={2}>
-              <CameraPreview stream={cameraStream} videoRef={videoRef} />
+              <CameraStage>
+                <CameraPreview stream={cameraStream} videoRef={videoRef} />
+                <GestureOverlay frame={gestureFrame} videoRef={videoRef} />
+              </CameraStage>
               {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
               {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
             </Stack>

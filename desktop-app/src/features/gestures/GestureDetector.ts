@@ -1,7 +1,10 @@
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import type { GestureEvent, GestureName } from './types';
 
+type VisionModule = typeof import('@mediapipe/tasks-vision');
+type HandLandmarkerInstance = import('@mediapipe/tasks-vision').HandLandmarker;
+
 export type GestureListener = (event: GestureEvent) => void;
+export type GestureFrameListener = (frame: GestureFrame) => void;
 
 type Landmark = {
   x: number;
@@ -13,6 +16,17 @@ type ClassifiedGesture = {
   gesture: GestureName;
   confidence: number;
   value?: number;
+};
+
+export type GestureFrame = {
+  landmarks: Landmark[];
+  gesture: {
+    name: GestureName;
+    confidence: number;
+    value?: number;
+  } | null;
+  hasHand: boolean;
+  timestamp: number;
 };
 
 const MODEL_ASSET_PATH =
@@ -97,16 +111,26 @@ const classifyGesture = (landmarks: Landmark[]): ClassifiedGesture | null => {
 };
 
 export class GestureDetector {
-  private handLandmarker: HandLandmarker | null = null;
+  private handLandmarker: HandLandmarkerInstance | null = null;
+  private visionModulePromise: Promise<VisionModule> | null = null;
   private rafId: number | null = null;
   private lastGestureAt = 0;
   private lastGestureKey: string | null = null;
 
-  private async ensureInitialized(): Promise<HandLandmarker> {
+  private loadVisionModule(): Promise<VisionModule> {
+    if (!this.visionModulePromise) {
+      this.visionModulePromise = import('@mediapipe/tasks-vision');
+    }
+
+    return this.visionModulePromise;
+  }
+
+  private async ensureInitialized(): Promise<HandLandmarkerInstance> {
     if (this.handLandmarker) {
       return this.handLandmarker;
     }
 
+    const { FilesetResolver, HandLandmarker } = await this.loadVisionModule();
     const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
     this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
@@ -122,7 +146,7 @@ export class GestureDetector {
     return this.handLandmarker;
   }
 
-  async start(videoElement: HTMLVideoElement, listener: GestureListener): Promise<void> {
+  async start(videoElement: HTMLVideoElement, listener: GestureListener, onFrame?: GestureFrameListener): Promise<void> {
     const handLandmarker = await this.ensureInitialized();
 
     const loop = (): void => {
@@ -130,10 +154,22 @@ export class GestureDetector {
         const timestamp = performance.now();
         const result = handLandmarker.detectForVideo(videoElement, timestamp);
         const landmarks = result.landmarks[0] as Landmark[] | undefined;
+        const classified = landmarks ? classifyGesture(landmarks) : null;
+
+        onFrame?.({
+          landmarks: landmarks ?? [],
+          gesture: classified
+            ? {
+                name: classified.gesture,
+                confidence: classified.confidence,
+                value: classified.value
+              }
+            : null,
+          hasHand: landmarks !== undefined,
+          timestamp: Date.now()
+        });
 
         if (landmarks) {
-          const classified = classifyGesture(landmarks);
-
           if (classified) {
             const gestureKey = `${classified.gesture}:${Math.round((classified.value ?? 0) * 100)}`;
             const now = Date.now();
