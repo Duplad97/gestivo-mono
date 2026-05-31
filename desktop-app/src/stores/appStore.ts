@@ -14,6 +14,7 @@ type AppState = {
   setOutputGain: (value: number) => void;
   setRecordingActive: (value: boolean) => void;
   setGestureDebugOverlayEnabled: (value: boolean) => void;
+  setGestureMapping: (index: number, mapping: GestureMappingRule) => void;
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -40,5 +41,15 @@ export const useAppStore = create<AppState>((set) => ({
         ...state.settings,
         enableGestureDebugOverlay: value
       }
+    })),
+  setGestureMapping: (index, mapping) =>
+    set((state) => ({
+      gestureMappings: state.gestureMappings.map((currentMapping, currentIndex) => {
+        if (currentIndex !== index) {
+          return currentMapping;
+        }
+
+        return mapping;
+      })
     }))
 }));

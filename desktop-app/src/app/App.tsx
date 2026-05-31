@@ -25,7 +25,13 @@ import { useCameraStream } from '../features/camera/useCameraStream';
 import { GestureDetector, type GestureFrame } from '../features/gestures/GestureDetector';
 import { GestureOverlay } from '../features/gestures/GestureOverlay';
 import { mapGestureToAction } from '../features/gestures/GestureMapper';
-import type { GestureEvent } from '../features/gestures/types';
+import {
+  GESTURE_ACTIONS,
+  GESTURE_NAMES,
+  type GestureAction,
+  type GestureEvent,
+  type GestureName
+} from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
 import { useAppStore } from '../stores/appStore';
 import { downloadBlob } from '../utils/file';
@@ -41,6 +47,17 @@ const nowFileName = (mode: RecordingMode): string => {
 
 export const App = (): ReactElement => {
   const discreteGestureCooldownMs = 900;
+  const gestureLabels: Record<GestureName, string> = {
+    fist: 'Fist',
+    open_hand: 'Open Hand',
+    pinch: 'Pinch',
+    thumbs_up: 'Thumbs Up'
+  };
+  const actionLabels: Record<GestureAction, string> = {
+    setLowPassFrequency: 'Set Low-pass Frequency',
+    setOutputGain: 'Set Output Gain',
+    toggleLowPassFocus: 'Toggle Low-pass Focus'
+  };
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('audio');
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
@@ -74,6 +91,7 @@ export const App = (): ReactElement => {
   const setOutputGain = useAppStore((state) => state.setOutputGain);
   const setRecordingActive = useAppStore((state) => state.setRecordingActive);
   const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
+  const setGestureMapping = useAppStore((state) => state.setGestureMapping);
 
   const audioState = useMemo(() => audioEngineRef.current.getState(), [micStream]);
 
@@ -347,6 +365,57 @@ export const App = (): ReactElement => {
                 }
                 label="Show gesture debug overlay"
               />
+
+              <Divider />
+
+              <Typography variant="h6">Gesture Mappings</Typography>
+              <Stack spacing={1.5}>
+                {gestureMappings.map((mapping, index) => (
+                  <Stack key={`${index}-${mapping.gesture}-${mapping.action}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <FormControl fullWidth>
+                      <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
+                      <Select
+                        labelId={`gesture-select-${index}`}
+                        label="Gesture"
+                        value={mapping.gesture}
+                        onChange={(event) =>
+                          setGestureMapping(index, {
+                            ...mapping,
+                            gesture: event.target.value as GestureName
+                          })
+                        }
+                      >
+                        {GESTURE_NAMES.map((gestureName) => (
+                          <MenuItem key={gestureName} value={gestureName}>
+                            {gestureLabels[gestureName]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth>
+                      <InputLabel id={`action-select-${index}`}>Action</InputLabel>
+                      <Select
+                        labelId={`action-select-${index}`}
+                        label="Action"
+                        value={mapping.action}
+                        onChange={(event) =>
+                          setGestureMapping(index, {
+                            ...mapping,
+                            action: event.target.value as GestureAction
+                          })
+                        }
+                      >
+                        {GESTURE_ACTIONS.map((actionName) => (
+                          <MenuItem key={actionName} value={actionName}>
+                            {actionLabels[actionName]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                ))}
+              </Stack>
 
               <Divider />
 
