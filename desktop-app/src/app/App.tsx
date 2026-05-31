@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import DesktopWindowsRoundedIcon from '@mui/icons-material/DesktopWindowsRounded';
 import FrontHandRoundedIcon from '@mui/icons-material/FrontHandRounded';
 import GraphicEqRoundedIcon from '@mui/icons-material/GraphicEqRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
 import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import MemoryRoundedIcon from '@mui/icons-material/MemoryRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import SensorsRoundedIcon from '@mui/icons-material/SensorsRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
@@ -25,6 +31,7 @@ import {
   Chip,
   Container,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -53,10 +60,9 @@ import {
 } from '../features/gestures/types';
 import type { GestureTriggerMode } from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
+import type { RecordingMode, ThemeMode } from '../features/settings/types';
 import { getPersistedAppPreferences, useAppStore } from '../stores/appStore';
 import { downloadBlob } from '../utils/file';
-
-type RecordingMode = 'audio' | 'video';
 
 const nowFileName = (mode: RecordingMode): string => {
   const date = new Date();
@@ -108,7 +114,7 @@ export const App = (): ReactElement => {
     edge: 'Edge Triggered'
   };
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
-  const [recordingMode, setRecordingMode] = useState<RecordingMode>('audio');
+  const [activeScreen, setActiveScreen] = useState<'studio' | 'settings'>('studio');
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
   const [gestureError, setGestureError] = useState<string | null>(null);
@@ -140,6 +146,8 @@ export const App = (): ReactElement => {
   const setHighPassFrequency = useAppStore((state) => state.setHighPassFrequency);
   const setOutputGain = useAppStore((state) => state.setOutputGain);
   const setRecordingActive = useAppStore((state) => state.setRecordingActive);
+  const setThemeMode = useAppStore((state) => state.setThemeMode);
+  const setRecordingMode = useAppStore((state) => state.setRecordingMode);
   const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
   const setGestureMapping = useAppStore((state) => state.setGestureMapping);
   const addGestureMapping = useAppStore((state) => state.addGestureMapping);
@@ -153,6 +161,21 @@ export const App = (): ReactElement => {
   const inputsActive = isCameraActive || audioState.initialized;
   const liveStatus = recordingActive ? 'Recording' : isCameraActive || audioState.initialized ? 'Ready' : 'Standby';
   const systemTone = recordingActive ? 'Hot' : isCameraActive && audioState.initialized ? 'Live' : 'Idle';
+  const sessionPanelTone = recordingActive ? 'is-recording' : inputsActive ? 'is-live' : 'is-idle';
+  const modeTileIcon = settings.recordingMode === 'video' ? <VideocamRoundedIcon className="metric-icon" fontSize="small" /> : <GraphicEqRoundedIcon className="metric-icon" fontSize="small" />;
+  const edgeRouteCount = gestureMappings.filter((mapping) => mapping.triggerMode === 'edge').length;
+  const gestureRouterSummary = `${gestureMappings.length} routes • ${edgeRouteCount} edge • ${gestureMappings.length - edgeRouteCount} continuous`;
+  const effectDeckSummary = `LP ${Math.round(lowPassFrequency)} Hz • HP ${Math.round(highPassFrequency)} Hz • ${outputGain.toFixed(2)}x`;
+  const shouldShowStatusAlert = statusMessage !== 'Ready';
+  const themeModeOptions: Array<{ value: ThemeMode; label: string; icon: ReactElement }> = [
+    { value: 'system', label: 'System', icon: <DesktopWindowsRoundedIcon fontSize="small" /> },
+    { value: 'dark', label: 'Dark', icon: <DarkModeRoundedIcon fontSize="small" /> },
+    { value: 'light', label: 'Light', icon: <LightModeRoundedIcon fontSize="small" /> }
+  ];
+  const recordingModeOptions: Array<{ value: RecordingMode; label: string; description: string; icon: ReactElement }> = [
+    { value: 'audio', label: 'Audio Only', description: 'Capture the processed audio chain only.', icon: <GraphicEqRoundedIcon fontSize="small" /> },
+    { value: 'video', label: 'Video + Audio', description: 'Capture camera video together with processed audio.', icon: <VideocamRoundedIcon fontSize="small" /> }
+  ];
   const stageState = cameraError
     ? {
         icon: <WarningAmberRoundedIcon fontSize="small" />,
@@ -266,7 +289,7 @@ export const App = (): ReactElement => {
     try {
       await startAudio();
 
-      if (recordingMode === 'video' && !cameraStream) {
+      if (settings.recordingMode === 'video' && !cameraStream) {
         await startCamera();
       }
 
@@ -274,7 +297,7 @@ export const App = (): ReactElement => {
       const videoTrack = cameraStream?.getVideoTracks()[0];
 
       recorderRef.current.start({
-        mode: recordingMode,
+        mode: settings.recordingMode,
         videoTrack,
         audioStream: processedAudio
       });
@@ -290,7 +313,7 @@ export const App = (): ReactElement => {
   const stopRecording = async (): Promise<void> => {
     try {
       const blob = await recorderRef.current.stop();
-      await downloadBlob(blob, nowFileName(recordingMode));
+      await downloadBlob(blob, nowFileName(settings.recordingMode));
       setStatusMessage('Recording saved successfully');
     } catch {
       setStatusMessage('Recording stopped, but save failed');
@@ -409,7 +432,23 @@ export const App = (): ReactElement => {
       <Container maxWidth="xl">
         <Paper className="glass-panel app-frame" elevation={0} sx={{ p: { xs: 1.5, md: 2.25, xl: 2.5 }, borderRadius: '32px' }}>
           <Stack spacing={2}>
-            <Stack spacing={1.25}>
+            <Stack spacing={1.25} sx={{ position: 'relative', pr: { xs: 7, md: 8 } }}>
+              <IconButton
+                color="inherit"
+                aria-label={activeScreen === 'settings' ? 'Back to studio' : 'Open settings'}
+                onClick={() => setActiveScreen((currentScreen) => (currentScreen === 'settings' ? 'studio' : 'settings'))}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'rgba(255,255,255,0.04)'
+                }}
+              >
+                {activeScreen === 'settings' ? <ArrowBackRoundedIcon /> : <SettingsRoundedIcon />}
+              </IconButton>
+
               <Stack direction={{ xs: 'column', xl: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'stretch', xl: 'flex-start' }}>
                 <Stack spacing={0.75} sx={{ maxWidth: 680 }}>
                   <Typography className="app-section-label">Creative Performance Suite</Typography>
@@ -482,6 +521,94 @@ export const App = (): ReactElement => {
               </Stack>
             </Stack>
 
+            {activeScreen === 'settings' ? (
+              <Box className="settings-screen">
+                <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', lg: 'flex-start' }}>
+                  <Box sx={{ maxWidth: 620 }}>
+                    <Typography className="app-section-label">Preferences</Typography>
+                    <Typography variant="h4" sx={{ mt: 1 }}>App settings</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
+                      Move persistent preferences out of the live control rail so the studio view stays focused on operating the session.
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Box className="settings-grid">
+                  <Paper className="glass-panel settings-card" elevation={0} sx={panelSx}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography className="app-section-label">Appearance</Typography>
+                        <Typography variant="h6" sx={{ mt: 0.75 }}>Theme mode</Typography>
+                      </Box>
+                      <Box className="settings-choice-grid">
+                        {themeModeOptions.map((option) => (
+                          <Button
+                            key={option.value}
+                            variant={settings.themeMode === option.value ? 'contained' : 'outlined'}
+                            color={settings.themeMode === option.value ? 'primary' : 'inherit'}
+                            className="settings-choice-button"
+                            startIcon={option.icon}
+                            onClick={() => setThemeMode(option.value)}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Stack>
+                  </Paper>
+
+                  <Paper className="glass-panel settings-card" elevation={0} sx={panelSx}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography className="app-section-label">Capture</Typography>
+                        <Typography variant="h6" sx={{ mt: 0.75 }}>Recording default</Typography>
+                      </Box>
+                      <Box className="settings-option-stack">
+                        {recordingModeOptions.map((option) => (
+                          <Button
+                            key={option.value}
+                            variant={settings.recordingMode === option.value ? 'contained' : 'outlined'}
+                            color={settings.recordingMode === option.value ? 'secondary' : 'inherit'}
+                            className="settings-option-button"
+                            startIcon={option.icon}
+                            onClick={() => setRecordingMode(option.value)}
+                          >
+                            <Box className="settings-option-copy">
+                              <span className="settings-option-title">{option.label}</span>
+                              <span className="settings-option-description">{option.description}</span>
+                            </Box>
+                          </Button>
+                        ))}
+                      </Box>
+                    </Stack>
+                  </Paper>
+
+                  <Paper className="glass-panel settings-card" elevation={0} sx={panelSx}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography className="app-section-label">Visual Aids</Typography>
+                        <Typography variant="h6" sx={{ mt: 0.75 }}>Overlay helpers</Typography>
+                      </Box>
+                      <Box className="settings-toggle-row">
+                        <Box className="settings-toggle-copy">
+                          <Typography variant="body2" className="setting-title-row">
+                            <VisibilityRoundedIcon fontSize="small" />
+                            <span>Gesture debug overlay</span>
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Show landmark guides and tracking feedback over the live camera stage.
+                          </Typography>
+                        </Box>
+                        <Switch
+                          checked={settings.enableGestureDebugOverlay}
+                          onChange={(_event, checked) => setGestureDebugOverlayEnabled(checked)}
+                        />
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Box>
+              </Box>
+            ) : (
             <Box className="dashboard-grid">
               <Box className="stage-stack">
                 <Paper className="glass-panel" elevation={0} sx={{ p: 0, borderRadius: '28px' }}>
@@ -532,20 +659,24 @@ export const App = (): ReactElement => {
 
                 {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
                 {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
-                <Alert severity="info">{statusMessage}</Alert>
+                {shouldShowStatusAlert ? <Alert severity="info">{statusMessage}</Alert> : null}
               </Box>
 
               <Box className="sidebar-stack">
-                <Paper className="glass-panel" elevation={0} sx={panelSx}>
+                <Paper className={`glass-panel session-panel ${sessionPanelTone}`} elevation={0} sx={panelSx}>
                   <Stack spacing={2}>
-                    <Box>
+                    <Box className="session-panel-header">
                       <Typography className="app-section-label">Session Control</Typography>
                       <Typography variant="h5" sx={{ mt: 0.75 }}>Studio transport</Typography>
+                      <Box className={`session-panel-status ${sessionPanelTone}`}>
+                        <span className="session-panel-status-dot" />
+                        <span>{recordingActive ? 'Recording live' : inputsActive ? 'Inputs armed' : 'Studio idle'}</span>
+                      </Box>
                     </Box>
 
                     <Box className="quick-status-grid">
                       <Box className={`metric-tile compact-metric-tile ${inputsActive ? 'metric-tile-active' : ''}`}>
-                        <GraphicEqRoundedIcon className="metric-icon" fontSize="small" />
+                        <MemoryRoundedIcon className="metric-icon" fontSize="small" />
                         <span className="metric-kicker">System</span>
                         <div className="metric-value">{systemTone}</div>
                       </Box>
@@ -555,9 +686,9 @@ export const App = (): ReactElement => {
                         <div className="metric-value">{currentGestureLabel}</div>
                       </Box>
                       <Box className="metric-tile compact-metric-tile">
-                        <VideocamRoundedIcon className="metric-icon" fontSize="small" />
+                        {modeTileIcon}
                         <span className="metric-kicker">Mode</span>
-                        <div className="metric-value">{recordingMode === 'video' ? 'AV' : 'Audio'}</div>
+                        <div className="metric-value">{settings.recordingMode === 'video' ? 'AV' : 'Audio'}</div>
                       </Box>
                     </Box>
 
@@ -575,53 +706,18 @@ export const App = (): ReactElement => {
                         </Button>
                       )}
                     </Box>
-
                     <Box className="session-detail-grid">
-                      <Button variant="outlined" color="inherit" fullWidth onClick={() => void stopSources()} disabled={!inputsActive} startIcon={<RestartAltRoundedIcon />}>
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        fullWidth
+                        onClick={() => void stopSources()}
+                        disabled={!inputsActive}
+                        startIcon={<RestartAltRoundedIcon />}
+                        sx={{ gridColumn: '1 / -1' }}
+                      >
                         Reset Inputs
                       </Button>
-                      <FormControl fullWidth sx={fieldSx}>
-                        <InputLabel id="recording-mode">Recording Mode</InputLabel>
-                        <Select
-                          labelId="recording-mode"
-                          label="Recording Mode"
-                          value={recordingMode}
-                          onChange={(event) => setRecordingMode(event.target.value as RecordingMode)}
-                          renderValue={(value) => (
-                            <Box className="inline-select-value">
-                              {value === 'video' ? <VideocamRoundedIcon fontSize="small" /> : <GraphicEqRoundedIcon fontSize="small" />}
-                              <span>{value === 'video' ? 'Video + Processed Audio' : 'Audio Only'}</span>
-                            </Box>
-                          )}
-                        >
-                          <MenuItem value="audio">
-                            <Box className="inline-select-value">
-                              <GraphicEqRoundedIcon fontSize="small" />
-                              <span>Audio Only</span>
-                            </Box>
-                          </MenuItem>
-                          <MenuItem value="video">
-                            <Box className="inline-select-value">
-                              <VideocamRoundedIcon fontSize="small" />
-                              <span>Video + Processed Audio</span>
-                            </Box>
-                          </MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-
-                    <Box className="session-inline-setting">
-                      <Box className="session-inline-copy">
-                        <Typography variant="body2" className="setting-title-row">
-                          <VisibilityRoundedIcon fontSize="small" />
-                          <span>Debug overlay</span>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">Show landmarks and tracking lines over the camera stage.</Typography>
-                      </Box>
-                      <Switch
-                        checked={settings.enableGestureDebugOverlay}
-                        onChange={(_event, checked) => setGestureDebugOverlayEnabled(checked)}
-                      />
                     </Box>
                   </Stack>
                 </Paper>
@@ -638,6 +734,9 @@ export const App = (): ReactElement => {
                         <Box>
                           <Typography className="app-section-label">Gesture Router</Typography>
                           <Typography variant="h6" sx={{ mt: 0.5 }}>Mapping matrix</Typography>
+                          <Typography variant="caption" color="text.secondary" className="accordion-summary-copy">
+                            {gestureRouterSummary}
+                          </Typography>
                         </Box>
                       </Box>
                       <Chip size="small" label={`${gestureMappings.length} routes`} />
@@ -654,9 +753,13 @@ export const App = (): ReactElement => {
                               <Box className="mapping-card-header">
                                 <Box>
                                   <Typography className="app-section-label mapping-title-row"><PlayArrowRoundedIcon fontSize="inherit" /> Route {String(index + 1).padStart(2, '0')}</Typography>
-                                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                    {gestureLabels[mapping.gesture]} to {actionLabels[mapping.action]}
-                                  </Typography>
+                                  <Box className="mapping-route-line">
+                                    <span className="mapping-route-token">{gestureLabels[mapping.gesture]}</span>
+                                    <span className="mapping-route-arrow">to</span>
+                                    <span className="mapping-route-token">{actionLabels[mapping.action]}</span>
+                                    <span className="mapping-route-arrow">via</span>
+                                    <span className={`mapping-route-token ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>{triggerModeLabels[mapping.triggerMode]}</span>
+                                  </Box>
                                 </Box>
                                 <Box className={`mapping-trigger-badge ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>
                                   {triggerModeLabels[mapping.triggerMode]}
@@ -758,6 +861,9 @@ export const App = (): ReactElement => {
                         <Box>
                           <Typography className="app-section-label">Effect Sculpting</Typography>
                           <Typography variant="h6" sx={{ mt: 0.5 }}>Live parameter deck</Typography>
+                          <Typography variant="caption" color="text.secondary" className="accordion-summary-copy">
+                            {effectDeckSummary}
+                          </Typography>
                         </Box>
                       </Box>
                       <Chip size="small" label={`${outputGain.toFixed(2)}x output`} />
@@ -802,6 +908,7 @@ export const App = (): ReactElement => {
                 </Accordion>
               </Box>
             </Box>
+            )}
           </Stack>
         </Paper>
       </Container>

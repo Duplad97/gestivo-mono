@@ -1,26 +1,34 @@
 import { createTheme } from '@mui/material/styles';
 
-export const appTheme = createTheme({
-  colorSchemes: {
-    dark: true,
-    light: true
-  },
+type ResolvedThemeMode = 'light' | 'dark';
+
+export const createAppTheme = (mode: ResolvedThemeMode) => createTheme({
   palette: {
-    mode: 'dark',
+    mode,
     primary: {
       main: '#7ff0d2'
     },
     secondary: {
-      main: '#ff8e42'
+      main: '#9b7cff'
     },
-    background: {
-      default: '#060814',
-      paper: 'rgba(10, 15, 29, 0.84)'
-    },
-    text: {
-      primary: '#eff3ff',
-      secondary: 'rgba(226, 232, 255, 0.72)'
-    }
+    background: mode === 'dark'
+      ? {
+          default: '#060814',
+          paper: 'rgba(10, 15, 29, 0.84)'
+        }
+      : {
+          default: '#f4f7fb',
+          paper: 'rgba(255, 255, 255, 0.88)'
+        },
+    text: mode === 'dark'
+      ? {
+          primary: '#eff3ff',
+          secondary: 'rgba(226, 232, 255, 0.72)'
+        }
+      : {
+          primary: '#102033',
+          secondary: 'rgba(16, 32, 51, 0.68)'
+        }
   },
   typography: {
     fontFamily: "'Space Grotesk', 'Sora', sans-serif",
@@ -64,11 +72,11 @@ export const appTheme = createTheme({
           boxShadow: 'none'
         },
         containedPrimary: {
-          background: 'linear-gradient(135deg, #7ff0d2, #54aefc)',
+          background: 'linear-gradient(135deg, #7ff0d2, #54aefc 56%, #8d6dff)',
           color: '#06111b'
         },
         containedSecondary: {
-          background: 'linear-gradient(135deg, #ff8e42, #ff5d82)'
+          background: 'linear-gradient(135deg, #8d6dff, #c45bff 58%, #ff6aa2)'
         },
         outlined: {
           borderColor: 'rgba(255,255,255,0.18)',
@@ -102,11 +110,11 @@ export const appTheme = createTheme({
         thumb: {
           width: 16,
           height: 16,
-          boxShadow: '0 0 0 4px rgba(127, 240, 210, 0.18)'
+          boxShadow: '0 0 0 4px rgba(141, 109, 255, 0.2)'
         },
         track: {
           border: 'none',
-          background: 'linear-gradient(90deg, #7ff0d2, #54aefc)'
+          background: 'linear-gradient(90deg, #7ff0d2, #54aefc 52%, #8d6dff)'
         },
         rail: {
           opacity: 1,
@@ -121,7 +129,7 @@ export const appTheme = createTheme({
             color: '#06111b'
           },
           '&.Mui-checked + .MuiSwitch-track': {
-            backgroundColor: '#7ff0d2'
+            backgroundColor: '#8d6dff'
           }
         },
         track: {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GestureMappingRule } from '../features/gestures/types';
-import type { AppSettings } from '../features/settings/types';
+import type { AppSettings, RecordingMode, ThemeMode } from '../features/settings/types';
 import type { PersistedAppPreferences } from '../types/preferences';
 
 type AppState = {
@@ -14,6 +14,8 @@ type AppState = {
   setHighPassFrequency: (value: number) => void;
   setOutputGain: (value: number) => void;
   setRecordingActive: (value: boolean) => void;
+  setThemeMode: (value: ThemeMode) => void;
+  setRecordingMode: (value: RecordingMode) => void;
   setGestureDebugOverlayEnabled: (value: boolean) => void;
   setGestureMapping: (index: number, mapping: GestureMappingRule) => void;
   addGestureMapping: () => void;
@@ -23,7 +25,15 @@ type AppState = {
 
 const defaultSettings: AppSettings = {
   themeMode: 'system',
-  enableGestureDebugOverlay: true
+  enableGestureDebugOverlay: true,
+  recordingMode: 'audio'
+};
+
+const normalizeSettings = (settings: AppSettings): AppSettings => {
+  return {
+    ...defaultSettings,
+    ...settings
+  };
 };
 
 export const createGestureMapping = (overrides?: Partial<GestureMappingRule>): GestureMappingRule => ({
@@ -63,6 +73,20 @@ export const useAppStore = create<AppState>((set) => ({
   setHighPassFrequency: (value) => set({ highPassFrequency: value }),
   setOutputGain: (value) => set({ outputGain: value }),
   setRecordingActive: (value) => set({ recordingActive: value }),
+  setThemeMode: (value) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        themeMode: value
+      }
+    })),
+  setRecordingMode: (value) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        recordingMode: value
+      }
+    })),
   setGestureDebugOverlayEnabled: (value) =>
     set((state) => ({
       settings: {
@@ -90,7 +114,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   hydratePreferences: (preferences) =>
     set({
-      settings: preferences.settings,
+      settings: normalizeSettings(preferences.settings),
       gestureMappings: normalizeGestureMappings(preferences.gestureMappings)
     })
 }));
