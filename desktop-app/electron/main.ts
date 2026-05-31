@@ -2,11 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain, session, systemPreferences } from 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { PersistedAppPreferences } from '../src/types/preferences';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
+const preferencesFilePath = (): string => path.join(app.getPath('userData'), 'preferences.json');
 
 const isMediaPermission = (permission: string): boolean => {
   return permission === 'media' || permission === 'camera' || permission === 'microphone' || permission === 'display-capture';
@@ -74,6 +76,23 @@ ipcMain.handle('recording:save', async (_event, data: ArrayBuffer, defaultFileNa
   await fs.writeFile(saveResult.filePath, buffer);
 
   return { canceled: false, filePath: saveResult.filePath };
+});
+
+ipcMain.handle('preferences:load', async (): Promise<PersistedAppPreferences | null> => {
+  try {
+    const fileContents = await fs.readFile(preferencesFilePath(), 'utf-8');
+    return JSON.parse(fileContents) as PersistedAppPreferences;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  }
+});
+
+ipcMain.handle('preferences:save', async (_event, preferences: PersistedAppPreferences): Promise<void> => {
+  await fs.writeFile(preferencesFilePath(), JSON.stringify(preferences, null, 2), 'utf-8');
 });
 
 app.whenReady().then(() => {

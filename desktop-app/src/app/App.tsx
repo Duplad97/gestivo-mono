@@ -33,7 +33,7 @@ import {
   type GestureName
 } from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
-import { useAppStore } from '../stores/appStore';
+import { getPersistedAppPreferences, useAppStore } from '../stores/appStore';
 import { downloadBlob } from '../utils/file';
 
 type RecordingMode = 'audio' | 'video';
@@ -64,6 +64,7 @@ export const App = (): ReactElement => {
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
   const [gestureError, setGestureError] = useState<string | null>(null);
   const [gestureFrame, setGestureFrame] = useState<GestureFrame | null>(null);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const audioEngineRef = useRef<AudioEngine>(new AudioEngine());
   const recorderRef = useRef<RecordingController>(new RecordingController());
@@ -92,6 +93,7 @@ export const App = (): ReactElement => {
   const setRecordingActive = useAppStore((state) => state.setRecordingActive);
   const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
   const setGestureMapping = useAppStore((state) => state.setGestureMapping);
+  const hydratePreferences = useAppStore((state) => state.hydratePreferences);
 
   const audioState = useMemo(() => audioEngineRef.current.getState(), [micStream]);
 
@@ -212,6 +214,47 @@ export const App = (): ReactElement => {
       setRecordingActive(false);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPreferences = async (): Promise<void> => {
+      try {
+        const preferences = await window.gestivo.loadPreferences();
+
+        if (!cancelled && preferences) {
+          hydratePreferences(preferences);
+        }
+      } catch {
+        if (!cancelled) {
+          setStatusMessage('Could not load saved preferences');
+        }
+      } finally {
+        if (!cancelled) {
+          setPreferencesLoaded(true);
+        }
+      }
+    };
+
+    void loadPreferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydratePreferences]);
+
+  useEffect(() => {
+    if (!preferencesLoaded) {
+      return;
+    }
+
+    const preferences = getPersistedAppPreferences({
+      settings,
+      gestureMappings
+    });
+
+    void window.gestivo.savePreferences(preferences);
+  }, [gestureMappings, preferencesLoaded, settings]);
 
   useEffect(() => {
     audioEngineRef.current.setLowPassFrequency(lowPassFrequency);
