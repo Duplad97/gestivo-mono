@@ -8,12 +8,14 @@ import {
   Container,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Slider,
   Stack,
+  Switch,
   Typography
 } from '@mui/material';
 import { AudioEngine } from '../features/audio/AudioEngine';
@@ -38,6 +40,7 @@ const nowFileName = (mode: RecordingMode): string => {
 };
 
 export const App = (): ReactElement => {
+  const discreteGestureCooldownMs = 900;
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('audio');
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
@@ -50,6 +53,7 @@ export const App = (): ReactElement => {
   const gestureDetectorRef = useRef<GestureDetector>(new GestureDetector());
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lowPassFocusEnabledRef = useRef(false);
+  const lastDiscreteGestureRef = useRef<{ gesture: string; action: string; timestamp: number } | null>(null);
 
   const {
     stream: cameraStream,
@@ -63,11 +67,13 @@ export const App = (): ReactElement => {
   const highPassFrequency = useAppStore((state) => state.highPassFrequency);
   const outputGain = useAppStore((state) => state.outputGain);
   const recordingActive = useAppStore((state) => state.recordingActive);
+  const settings = useAppStore((state) => state.settings);
   const gestureMappings = useAppStore((state) => state.gestureMappings);
   const setLowPassFrequency = useAppStore((state) => state.setLowPassFrequency);
   const setHighPassFrequency = useAppStore((state) => state.setHighPassFrequency);
   const setOutputGain = useAppStore((state) => state.setOutputGain);
   const setRecordingActive = useAppStore((state) => state.setRecordingActive);
+  const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
 
   const audioState = useMemo(() => audioEngineRef.current.getState(), [micStream]);
 
@@ -112,6 +118,22 @@ export const App = (): ReactElement => {
     }
 
     if (action.action === 'toggleLowPassFocus') {
+      const lastDiscreteGesture = lastDiscreteGestureRef.current;
+
+      if (
+        lastDiscreteGesture &&
+        lastDiscreteGesture.gesture === event.gesture &&
+        lastDiscreteGesture.action === action.action &&
+        event.timestamp - lastDiscreteGesture.timestamp < discreteGestureCooldownMs
+      ) {
+        return;
+      }
+
+      lastDiscreteGestureRef.current = {
+        gesture: event.gesture,
+        action: action.action,
+        timestamp: event.timestamp
+      };
       lowPassFocusEnabledRef.current = !lowPassFocusEnabledRef.current;
       setLowPassFrequency(lowPassFocusEnabledRef.current ? 1800 : 12000);
     }
@@ -131,6 +153,7 @@ export const App = (): ReactElement => {
     stopCamera();
     micStream?.getTracks().forEach((track) => track.stop());
     setMicStream(null);
+    lastDiscreteGestureRef.current = null;
     await audioEngineRef.current.dispose();
     setStatusMessage('Media sources stopped');
   };
@@ -189,6 +212,7 @@ export const App = (): ReactElement => {
 
     if (!cameraStream || !videoElement) {
       gestureDetectorRef.current.stop();
+      lastDiscreteGestureRef.current = null;
       setGestureFrame(null);
       return;
     }
@@ -219,6 +243,7 @@ export const App = (): ReactElement => {
 
     return () => {
       cancelled = true;
+      lastDiscreteGestureRef.current = null;
       setGestureFrame(null);
       gestureDetectorRef.current.stop();
     };
@@ -271,7 +296,7 @@ export const App = (): ReactElement => {
             <Stack spacing={2} flex={2}>
               <CameraStage>
                 <CameraPreview stream={cameraStream} videoRef={videoRef} />
-                <GestureOverlay frame={gestureFrame} videoRef={videoRef} />
+                {settings.enableGestureDebugOverlay ? <GestureOverlay frame={gestureFrame} videoRef={videoRef} /> : null}
               </CameraStage>
               {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
               {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
@@ -312,6 +337,16 @@ export const App = (): ReactElement => {
                   </Button>
                 )}
               </Stack>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={settings.enableGestureDebugOverlay}
+                    onChange={(_event, checked) => setGestureDebugOverlayEnabled(checked)}
+                  />
+                }
+                label="Show gesture debug overlay"
+              />
 
               <Divider />
 
