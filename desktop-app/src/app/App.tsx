@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   Chip,
   Container,
-  Divider,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -22,6 +24,7 @@ import { AudioEngine } from '../features/audio/AudioEngine';
 import { CameraPreview } from '../features/camera/CameraPreview';
 import { CameraStage } from '../features/camera/CameraStage';
 import { useCameraStream } from '../features/camera/useCameraStream';
+import { ShaderBackdrop } from '../components/ShaderBackdrop';
 import { GestureDetector, type GestureFrame } from '../features/gestures/GestureDetector';
 import { GestureOverlay } from '../features/gestures/GestureOverlay';
 import { mapGestureToActions } from '../features/gestures/GestureMapper';
@@ -47,6 +50,31 @@ const nowFileName = (mode: RecordingMode): string => {
   const suffix = mode === 'video' ? 'webm' : 'webm';
   return `gestivo-${mode}-${iso}.${suffix}`;
 };
+
+const panelSx = {
+  p: { xs: 2, md: 2.5 },
+  borderRadius: '24px'
+} as const;
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    background: 'rgba(255,255,255,0.04)',
+    backdropFilter: 'blur(10px)',
+    '& fieldset': {
+      borderColor: 'rgba(255,255,255,0.1)'
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(127,240,210,0.28)'
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#7ff0d2'
+    }
+  },
+  '& .MuiInputLabel-root': {
+    color: 'rgba(226,232,255,0.62)'
+  }
+} as const;
 
 export const App = (): ReactElement => {
   const discreteGestureCooldownMs = 900;
@@ -106,6 +134,9 @@ export const App = (): ReactElement => {
 
   const audioState = useMemo(() => audioEngineRef.current.getState(), [micStream]);
   const gestureMappingWarnings = useMemo(() => getGestureMappingWarnings(gestureMappings), [gestureMappings]);
+  const currentGestureLabel = lastGesture ? gestureLabels[lastGesture.gesture] : 'Awaiting input';
+  const liveStatus = recordingActive ? 'Recording live' : isCameraActive || audioState.initialized ? 'Performance ready' : 'Standby';
+  const systemTone = recordingActive ? 'Hot' : isCameraActive && audioState.initialized ? 'Live' : 'Idle';
 
   const startAudio = async (): Promise<MediaStream> => {
     if (micStream) {
@@ -335,235 +366,327 @@ export const App = (): ReactElement => {
   }, [micStream, stopCamera]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          border: '1px solid rgba(255,255,255,0.16)',
-          backdropFilter: 'blur(10px)',
-          background: 'linear-gradient(170deg, rgba(20,27,41,0.85), rgba(9,11,17,0.9))'
-        }}
-      >
-        <Stack spacing={3}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
-            <Box>
-              <Typography variant="h4">Gestivo Desktop MVP</Typography>
-              <Typography variant="body1" color="text.secondary">
-                Real-time webcam input and gesture-ready audio processing foundation.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip
-                color={audioState.initialized ? 'success' : 'default'}
-                label={audioState.initialized ? 'Audio Engine Live' : 'Audio Engine Idle'}
-              />
-              <Chip color={isCameraActive ? 'success' : 'default'} label={isCameraActive ? 'Camera Live' : 'Camera Idle'} />
-              <Chip
-                color={lastGesture ? 'secondary' : 'default'}
-                label={lastGesture ? `Gesture: ${lastGesture.gesture}` : 'Gesture Idle'}
-              />
-            </Stack>
-          </Stack>
+    <Box className="app-shell">
+      <ShaderBackdrop />
+      <Container maxWidth="xl">
+        <Paper className="glass-panel app-frame" elevation={0} sx={{ p: { xs: 1.5, md: 2.25, xl: 2.5 }, borderRadius: '32px' }}>
+          <Stack spacing={2}>
+            <Stack spacing={1.25}>
+              <Stack direction={{ xs: 'column', xl: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'stretch', xl: 'flex-start' }}>
+                <Stack spacing={0.75} sx={{ maxWidth: 680 }}>
+                  <Typography className="app-section-label">Creative Performance Suite</Typography>
+                  <Typography variant="h3" sx={{ maxWidth: 580, fontSize: { xs: '1.9rem', md: '2.3rem', xl: '2.5rem' }, lineHeight: 1 }}>
+                    Gesture-controlled audio, staged like a real instrument.
+                  </Typography>
+                </Stack>
 
-          <Divider />
-
-          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
-            <Stack spacing={2} flex={2}>
-              <CameraStage>
-                <CameraPreview stream={cameraStream} videoRef={videoRef} />
-                {settings.enableGestureDebugOverlay ? <GestureOverlay frame={gestureFrame} videoRef={videoRef} /> : null}
-              </CameraStage>
-              {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
-              {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
-            </Stack>
-
-            <Stack spacing={2} flex={1}>
-              <Typography variant="h6">Session</Typography>
-              <Stack direction="row" spacing={1}>
-                <Button variant="contained" onClick={() => void startSources()}>
-                  Start Inputs
-                </Button>
-                <Button variant="outlined" color="inherit" onClick={() => void stopSources()}>
-                  Stop Inputs
-                </Button>
+                <Box className="hero-transport-cluster">
+                  <Typography component="span" className="hero-transport-label">Session</Typography>
+                  <Box className="hero-transport-actions">
+                    <Button variant="contained" className="hero-transport-button is-primary" onClick={() => void startSources()}>
+                      Power Up Studio
+                    </Button>
+                    <Button variant="text" color="inherit" className="hero-transport-button" onClick={() => void stopSources()}>
+                      Reset Session
+                    </Button>
+                  </Box>
+                </Box>
               </Stack>
 
-              <FormControl fullWidth>
-                <InputLabel id="recording-mode">Recording Mode</InputLabel>
-                <Select
-                  labelId="recording-mode"
-                  label="Recording Mode"
-                  value={recordingMode}
-                  onChange={(event) => setRecordingMode(event.target.value as RecordingMode)}
-                >
-                  <MenuItem value="audio">Audio Only</MenuItem>
-                  <MenuItem value="video">Video + Processed Audio</MenuItem>
-                </Select>
-              </FormControl>
+              <Stack
+                direction={{ xs: 'column', lg: 'row' }}
+                spacing={1}
+                justifyContent="space-between"
+                alignItems={{ xs: 'stretch', lg: 'center' }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, fontSize: '0.9rem' }}>
+                  Keep the live stage in view, arm the session quickly, and open deeper routing or effect controls only when you need them.
+                </Typography>
 
-              <Stack direction="row" spacing={1}>
-                {!recordingActive ? (
-                  <Button variant="contained" color="secondary" onClick={() => void startRecording()}>
-                    Start Recording
-                  </Button>
-                ) : (
-                  <Button variant="contained" color="error" onClick={() => void stopRecording()}>
-                    Stop and Save
-                  </Button>
-                )}
+                <Box className="hero-status-strip">
+                  <Box className={`hero-status-item ${audioState.initialized ? 'is-active' : ''}`}>
+                    <Box className="hero-status-dot" />
+                    <Typography component="span" className="hero-status-label">Audio</Typography>
+                    <Typography component="span" className="hero-status-value">
+                      {audioState.initialized ? 'Armed' : 'Idle'}
+                    </Typography>
+                  </Box>
+
+                  <Box className={`hero-status-item ${isCameraActive ? 'is-active' : ''}`}>
+                    <Box className="hero-status-dot" />
+                    <Typography component="span" className="hero-status-label">Vision</Typography>
+                    <Typography component="span" className="hero-status-value">
+                      {isCameraActive ? 'Live' : 'Idle'}
+                    </Typography>
+                  </Box>
+
+                  <Box className={`hero-status-item ${recordingActive ? 'is-recording' : ''}`}>
+                    <Box className="hero-status-dot" />
+                    <Typography component="span" className="hero-status-label">Capture</Typography>
+                    <Typography component="span" className="hero-status-value">
+                      {recordingActive ? 'Recording' : 'Standby'}
+                    </Typography>
+                  </Box>
+                </Box>
               </Stack>
+            </Stack>
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.enableGestureDebugOverlay}
-                    onChange={(_event, checked) => setGestureDebugOverlayEnabled(checked)}
-                  />
-                }
-                label="Show gesture debug overlay"
-              />
+            <Box className="dashboard-grid">
+              <Box className="stage-stack">
+                <Paper className="glass-panel" elevation={0} sx={{ p: 0, borderRadius: '28px' }}>
+                  <Box className="camera-shell">
+                    <Box className="stage-caption">
+                      <Typography className="app-section-label" sx={{ mb: 1 }}>Live Visual Stage</Typography>
+                      <Typography variant="h5" sx={{ mb: 0.75 }}>Performance camera</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {lastGesture
+                          ? `Tracking ${gestureLabels[lastGesture.gesture]} at ${Math.round(lastGesture.confidence * 100)}% confidence.`
+                          : 'Bring your hand into frame to start driving the effect chain.'}
+                      </Typography>
+                    </Box>
 
-              <Divider />
+                    <Box className="stage-chrome">
+                      <Box className="stage-pill">{liveStatus}</Box>
+                      <Box className="stage-pill">{settings.enableGestureDebugOverlay ? 'Debug overlay on' : 'Debug overlay off'}</Box>
+                    </Box>
 
-              <Typography variant="h6">Gesture Mappings</Typography>
-              {gestureMappingWarnings.length > 0 ? (
-                <Alert severity="warning">
-                  {gestureMappingWarnings.join(' ')}
-                </Alert>
-              ) : null}
-              <Stack spacing={1.5}>
-                {gestureMappings.map((mapping, index) => (
-                  <Stack key={`${index}-${mapping.gesture}-${mapping.action}-${mapping.triggerMode}`} spacing={1}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <FormControl fullWidth>
-                        <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
-                        <Select
-                          labelId={`gesture-select-${index}`}
-                          label="Gesture"
-                          value={mapping.gesture}
-                          onChange={(event) =>
-                            setGestureMapping(index, {
-                              ...mapping,
-                              gesture: event.target.value as GestureName
-                            })
-                          }
-                        >
-                          {GESTURE_NAMES.map((gestureName) => (
-                            <MenuItem key={gestureName} value={gestureName}>
-                              {gestureLabels[gestureName]}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                    <CameraStage>
+                      <CameraPreview stream={cameraStream} videoRef={videoRef} />
+                      {settings.enableGestureDebugOverlay ? <GestureOverlay frame={gestureFrame} videoRef={videoRef} /> : null}
+                    </CameraStage>
+                  </Box>
+                </Paper>
 
-                      <FormControl fullWidth>
-                        <InputLabel id={`action-select-${index}`}>Action</InputLabel>
-                        <Select
-                          labelId={`action-select-${index}`}
-                          label="Action"
-                          value={mapping.action}
-                          onChange={(event) =>
-                            setGestureMapping(index, {
-                              ...mapping,
-                              action: event.target.value as GestureAction,
-                              triggerMode:
-                                event.target.value === 'toggleLowPassFocus'
-                                  ? 'edge'
-                                  : mapping.triggerMode
-                            })
-                          }
-                        >
-                          {GESTURE_ACTIONS.map((actionName) => (
-                            <MenuItem key={actionName} value={actionName}>
-                              {actionLabels[actionName]}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Stack>
+                {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
+                {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
+                <Alert severity="info">{statusMessage}</Alert>
+              </Box>
 
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <FormControl fullWidth>
-                        <InputLabel id={`trigger-mode-select-${index}`}>Trigger Mode</InputLabel>
-                        <Select
-                          labelId={`trigger-mode-select-${index}`}
-                          label="Trigger Mode"
-                          value={mapping.triggerMode}
-                          onChange={(event) =>
-                            setGestureMapping(index, {
-                              ...mapping,
-                              triggerMode: event.target.value as GestureTriggerMode
-                            })
-                          }
-                        >
-                          {GESTURE_TRIGGER_MODES.map((triggerMode) => (
-                            <MenuItem key={triggerMode} value={triggerMode}>
-                              {triggerModeLabels[triggerMode]}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+              <Box className="sidebar-stack">
+                <Paper className="glass-panel" elevation={0} sx={panelSx}>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography className="app-section-label">Session Control</Typography>
+                      <Typography variant="h5" sx={{ mt: 0.75 }}>Studio transport</Typography>
+                    </Box>
 
-                      <Button
-                        color="inherit"
-                        variant="outlined"
-                        onClick={() => removeGestureMapping(index)}
-                        sx={{ minWidth: { sm: 128 } }}
-                      >
-                        Remove
+                    <Box className="quick-status-grid">
+                      <Box className="metric-tile compact-metric-tile">
+                        <span className="metric-kicker">System</span>
+                        <div className="metric-value">{systemTone}</div>
+                      </Box>
+                      <Box className="metric-tile compact-metric-tile">
+                        <span className="metric-kicker">Gesture</span>
+                        <div className="metric-value">{currentGestureLabel}</div>
+                      </Box>
+                      <Box className="metric-tile compact-metric-tile">
+                        <span className="metric-kicker">Mode</span>
+                        <div className="metric-value">{recordingMode === 'video' ? 'AV' : 'Audio'}</div>
+                      </Box>
+                    </Box>
+
+                    <Box className="controls-grid">
+                      <Button variant="contained" fullWidth onClick={() => void startSources()}>
+                        Start Inputs
                       </Button>
-                    </Stack>
+                      <Button variant="outlined" color="inherit" fullWidth onClick={() => void stopSources()}>
+                        Stop Inputs
+                      </Button>
+                      {!recordingActive ? (
+                        <Button variant="contained" color="secondary" fullWidth onClick={() => void startRecording()}>
+                          Start Recording
+                        </Button>
+                      ) : (
+                        <Button variant="contained" color="error" fullWidth onClick={() => void stopRecording()}>
+                          Stop and Save
+                        </Button>
+                      )}
+                      <FormControl fullWidth sx={fieldSx}>
+                        <InputLabel id="recording-mode">Recording Mode</InputLabel>
+                        <Select
+                          labelId="recording-mode"
+                          label="Recording Mode"
+                          value={recordingMode}
+                          onChange={(event) => setRecordingMode(event.target.value as RecordingMode)}
+                        >
+                          <MenuItem value="audio">Audio Only</MenuItem>
+                          <MenuItem value="video">Video + Processed Audio</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+
+                    <FormControlLabel
+                      sx={{ m: 0, justifyContent: 'space-between' }}
+                      control={
+                        <Switch
+                          checked={settings.enableGestureDebugOverlay}
+                          onChange={(_event, checked) => setGestureDebugOverlayEnabled(checked)}
+                        />
+                      }
+                      label="Show gesture debug overlay"
+                      labelPlacement="start"
+                    />
                   </Stack>
-                ))}
+                </Paper>
 
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  onClick={() => addGestureMapping()}
-                >
-                  Add Mapping
-                </Button>
-              </Stack>
+                <Accordion disableGutters defaultExpanded={false} className="glass-accordion">
+                  <AccordionSummary
+                    expandIcon={<Box component="span" className="accordion-icon">+</Box>}
+                    aria-controls="gesture-router-content"
+                    id="gesture-router-header"
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
+                      <Box>
+                        <Typography className="app-section-label">Gesture Router</Typography>
+                        <Typography variant="h6" sx={{ mt: 0.5 }}>Mapping matrix</Typography>
+                      </Box>
+                      <Chip size="small" label={`${gestureMappings.length} routes`} />
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      {gestureMappingWarnings.length > 0 ? <Alert severity="warning">{gestureMappingWarnings.join(' ')}</Alert> : null}
 
-              <Divider />
+                      <Box className="mapping-grid">
+                        {gestureMappings.map((mapping, index) => (
+                          <Box key={`${index}-${mapping.gesture}-${mapping.action}-${mapping.triggerMode}`} className="mapping-card">
+                            <Stack spacing={1.2}>
+                              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                                <FormControl fullWidth sx={fieldSx}>
+                                  <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
+                                  <Select
+                                    labelId={`gesture-select-${index}`}
+                                    label="Gesture"
+                                    value={mapping.gesture}
+                                    onChange={(event) =>
+                                      setGestureMapping(index, {
+                                        ...mapping,
+                                        gesture: event.target.value as GestureName
+                                      })
+                                    }
+                                  >
+                                    {GESTURE_NAMES.map((gestureName) => (
+                                      <MenuItem key={gestureName} value={gestureName}>
+                                        {gestureLabels[gestureName]}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
 
-              <Typography variant="h6">Effects</Typography>
-              <Alert severity="success">
-                {lastGesture
-                  ? `Detected ${lastGesture.gesture} with ${Math.round(lastGesture.confidence * 100)}% confidence`
-                  : 'Show a hand to the camera to drive the audio controls.'}
-              </Alert>
-              <Box>
-                <Typography gutterBottom>Low-pass Frequency: {Math.round(lowPassFrequency)} Hz</Typography>
-                <Slider
-                  min={100}
-                  max={20000}
-                  value={lowPassFrequency}
-                  onChange={(_event, value) => setLowPassFrequency(value as number)}
-                />
+                                <FormControl fullWidth sx={fieldSx}>
+                                  <InputLabel id={`action-select-${index}`}>Action</InputLabel>
+                                  <Select
+                                    labelId={`action-select-${index}`}
+                                    label="Action"
+                                    value={mapping.action}
+                                    onChange={(event) =>
+                                      setGestureMapping(index, {
+                                        ...mapping,
+                                        action: event.target.value as GestureAction,
+                                        triggerMode: event.target.value === 'toggleLowPassFocus' ? 'edge' : mapping.triggerMode
+                                      })
+                                    }
+                                  >
+                                    {GESTURE_ACTIONS.map((actionName) => (
+                                      <MenuItem key={actionName} value={actionName}>
+                                        {actionLabels[actionName]}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Stack>
+
+                              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                                <FormControl fullWidth sx={fieldSx}>
+                                  <InputLabel id={`trigger-mode-select-${index}`}>Trigger Mode</InputLabel>
+                                  <Select
+                                    labelId={`trigger-mode-select-${index}`}
+                                    label="Trigger Mode"
+                                    value={mapping.triggerMode}
+                                    onChange={(event) =>
+                                      setGestureMapping(index, {
+                                        ...mapping,
+                                        triggerMode: event.target.value as GestureTriggerMode
+                                      })
+                                    }
+                                  >
+                                    {GESTURE_TRIGGER_MODES.map((triggerMode) => (
+                                      <MenuItem key={triggerMode} value={triggerMode}>
+                                        {triggerModeLabels[triggerMode]}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+
+                                <Button variant="outlined" color="inherit" onClick={() => removeGestureMapping(index)} sx={{ minWidth: { sm: 124 } }}>
+                                  Remove
+                                </Button>
+                              </Stack>
+                            </Stack>
+                          </Box>
+                        ))}
+
+                        <Button variant="outlined" color="inherit" onClick={() => addGestureMapping()}>
+                          Add Mapping
+                        </Button>
+                      </Box>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion disableGutters defaultExpanded={false} className="glass-accordion">
+                  <AccordionSummary
+                    expandIcon={<Box component="span" className="accordion-icon">+</Box>}
+                    aria-controls="effect-deck-content"
+                    id="effect-deck-header"
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
+                      <Box>
+                        <Typography className="app-section-label">Effect Sculpting</Typography>
+                        <Typography variant="h6" sx={{ mt: 0.5 }}>Live parameter deck</Typography>
+                      </Box>
+                      <Chip size="small" label={`${outputGain.toFixed(2)}x output`} />
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      <Alert severity="success">
+                        {lastGesture
+                          ? `${gestureLabels[lastGesture.gesture]} is driving the chain with ${Math.round(lastGesture.confidence * 100)}% confidence.`
+                          : 'The effect deck will react as soon as a tracked gesture is recognized.'}
+                      </Alert>
+
+                      <Box>
+                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                          <Typography variant="body2">Low-pass Frequency</Typography>
+                          <Typography variant="body2" color="text.secondary">{Math.round(lowPassFrequency)} Hz</Typography>
+                        </Stack>
+                        <Slider min={100} max={20000} value={lowPassFrequency} onChange={(_event, value) => setLowPassFrequency(value as number)} />
+                      </Box>
+
+                      <Box>
+                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                          <Typography variant="body2">High-pass Frequency</Typography>
+                          <Typography variant="body2" color="text.secondary">{Math.round(highPassFrequency)} Hz</Typography>
+                        </Stack>
+                        <Slider min={20} max={5000} value={highPassFrequency} onChange={(_event, value) => setHighPassFrequency(value as number)} />
+                      </Box>
+
+                      <Box>
+                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                          <Typography variant="body2">Output Gain</Typography>
+                          <Typography variant="body2" color="text.secondary">{outputGain.toFixed(2)}x</Typography>
+                        </Stack>
+                        <Slider min={0} max={2} step={0.01} value={outputGain} onChange={(_event, value) => setOutputGain(value as number)} />
+                      </Box>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
               </Box>
-
-              <Box>
-                <Typography gutterBottom>High-pass Frequency: {Math.round(highPassFrequency)} Hz</Typography>
-                <Slider
-                  min={20}
-                  max={5000}
-                  value={highPassFrequency}
-                  onChange={(_event, value) => setHighPassFrequency(value as number)}
-                />
-              </Box>
-
-              <Box>
-                <Typography gutterBottom>Output Gain: {outputGain.toFixed(2)}x</Typography>
-                <Slider min={0} max={2} step={0.01} value={outputGain} onChange={(_event, value) => setOutputGain(value as number)} />
-              </Box>
-            </Stack>
+            </Box>
           </Stack>
-
-          <Alert severity="info">{statusMessage}</Alert>
-        </Stack>
-      </Paper>
-    </Container>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
