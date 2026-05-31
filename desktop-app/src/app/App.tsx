@@ -24,14 +24,17 @@ import { CameraStage } from '../features/camera/CameraStage';
 import { useCameraStream } from '../features/camera/useCameraStream';
 import { GestureDetector, type GestureFrame } from '../features/gestures/GestureDetector';
 import { GestureOverlay } from '../features/gestures/GestureOverlay';
-import { mapGestureToAction } from '../features/gestures/GestureMapper';
+import { mapGestureToActions } from '../features/gestures/GestureMapper';
+import { getGestureMappingWarnings } from '../features/gestures/getGestureMappingWarnings';
 import {
   GESTURE_ACTIONS,
   GESTURE_NAMES,
+  GESTURE_TRIGGER_MODES,
   type GestureAction,
   type GestureEvent,
   type GestureName
 } from '../features/gestures/types';
+import type { GestureTriggerMode } from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
 import { getPersistedAppPreferences, useAppStore } from '../stores/appStore';
 import { downloadBlob } from '../utils/file';
@@ -57,6 +60,10 @@ export const App = (): ReactElement => {
     setLowPassFrequency: 'Set Low-pass Frequency',
     setOutputGain: 'Set Output Gain',
     toggleLowPassFocus: 'Toggle Low-pass Focus'
+  };
+  const triggerModeLabels: Record<GestureTriggerMode, string> = {
+    continuous: 'Continuous',
+    edge: 'Edge Triggered'
   };
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('audio');
@@ -93,9 +100,12 @@ export const App = (): ReactElement => {
   const setRecordingActive = useAppStore((state) => state.setRecordingActive);
   const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
   const setGestureMapping = useAppStore((state) => state.setGestureMapping);
+  const addGestureMapping = useAppStore((state) => state.addGestureMapping);
+  const removeGestureMapping = useAppStore((state) => state.removeGestureMapping);
   const hydratePreferences = useAppStore((state) => state.hydratePreferences);
 
   const audioState = useMemo(() => audioEngineRef.current.getState(), [micStream]);
+  const gestureMappingWarnings = useMemo(() => getGestureMappingWarnings(gestureMappings), [gestureMappings]);
 
   const startAudio = async (): Promise<MediaStream> => {
     if (micStream) {
@@ -121,42 +131,47 @@ export const App = (): ReactElement => {
   const applyGestureEvent = (event: GestureEvent): void => {
     setLastGesture(event);
 
-    const action = mapGestureToAction(event, gestureMappings);
+    const actions = mapGestureToActions(event, gestureMappings);
 
-    if (!action) {
+    if (actions.length === 0) {
       return;
     }
 
-    if (action.action === 'setLowPassFrequency' && action.value !== undefined) {
-      setLowPassFrequency(action.value);
-      return;
-    }
+    actions.forEach((action) => {
+      if (action.triggerMode === 'edge') {
+        const lastDiscreteGesture = lastDiscreteGestureRef.current;
 
-    if (action.action === 'setOutputGain' && action.value !== undefined) {
-      setOutputGain(action.value);
-      return;
-    }
+        if (
+          lastDiscreteGesture &&
+          lastDiscreteGesture.gesture === event.gesture &&
+          lastDiscreteGesture.action === action.action &&
+          event.timestamp - lastDiscreteGesture.timestamp < discreteGestureCooldownMs
+        ) {
+          return;
+        }
 
-    if (action.action === 'toggleLowPassFocus') {
-      const lastDiscreteGesture = lastDiscreteGestureRef.current;
+        lastDiscreteGestureRef.current = {
+          gesture: event.gesture,
+          action: action.action,
+          timestamp: event.timestamp
+        };
+      }
 
-      if (
-        lastDiscreteGesture &&
-        lastDiscreteGesture.gesture === event.gesture &&
-        lastDiscreteGesture.action === action.action &&
-        event.timestamp - lastDiscreteGesture.timestamp < discreteGestureCooldownMs
-      ) {
+      if (action.action === 'setLowPassFrequency' && action.value !== undefined) {
+        setLowPassFrequency(action.value);
         return;
       }
 
-      lastDiscreteGestureRef.current = {
-        gesture: event.gesture,
-        action: action.action,
-        timestamp: event.timestamp
-      };
-      lowPassFocusEnabledRef.current = !lowPassFocusEnabledRef.current;
-      setLowPassFrequency(lowPassFocusEnabledRef.current ? 1800 : 12000);
-    }
+      if (action.action === 'setOutputGain' && action.value !== undefined) {
+        setOutputGain(action.value);
+        return;
+      }
+
+      if (action.action === 'toggleLowPassFocus') {
+        lowPassFocusEnabledRef.current = !lowPassFocusEnabledRef.current;
+        setLowPassFrequency(lowPassFocusEnabledRef.current ? 1800 : 12000);
+      }
+    });
   };
 
   const startSources = async (): Promise<void> => {
@@ -412,52 +427,103 @@ export const App = (): ReactElement => {
               <Divider />
 
               <Typography variant="h6">Gesture Mappings</Typography>
+              {gestureMappingWarnings.length > 0 ? (
+                <Alert severity="warning">
+                  {gestureMappingWarnings.join(' ')}
+                </Alert>
+              ) : null}
               <Stack spacing={1.5}>
                 {gestureMappings.map((mapping, index) => (
-                  <Stack key={`${index}-${mapping.gesture}-${mapping.action}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                    <FormControl fullWidth>
-                      <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
-                      <Select
-                        labelId={`gesture-select-${index}`}
-                        label="Gesture"
-                        value={mapping.gesture}
-                        onChange={(event) =>
-                          setGestureMapping(index, {
-                            ...mapping,
-                            gesture: event.target.value as GestureName
-                          })
-                        }
-                      >
-                        {GESTURE_NAMES.map((gestureName) => (
-                          <MenuItem key={gestureName} value={gestureName}>
-                            {gestureLabels[gestureName]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                  <Stack key={`${index}-${mapping.gesture}-${mapping.action}-${mapping.triggerMode}`} spacing={1}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <FormControl fullWidth>
+                        <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
+                        <Select
+                          labelId={`gesture-select-${index}`}
+                          label="Gesture"
+                          value={mapping.gesture}
+                          onChange={(event) =>
+                            setGestureMapping(index, {
+                              ...mapping,
+                              gesture: event.target.value as GestureName
+                            })
+                          }
+                        >
+                          {GESTURE_NAMES.map((gestureName) => (
+                            <MenuItem key={gestureName} value={gestureName}>
+                              {gestureLabels[gestureName]}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
 
-                    <FormControl fullWidth>
-                      <InputLabel id={`action-select-${index}`}>Action</InputLabel>
-                      <Select
-                        labelId={`action-select-${index}`}
-                        label="Action"
-                        value={mapping.action}
-                        onChange={(event) =>
-                          setGestureMapping(index, {
-                            ...mapping,
-                            action: event.target.value as GestureAction
-                          })
-                        }
+                      <FormControl fullWidth>
+                        <InputLabel id={`action-select-${index}`}>Action</InputLabel>
+                        <Select
+                          labelId={`action-select-${index}`}
+                          label="Action"
+                          value={mapping.action}
+                          onChange={(event) =>
+                            setGestureMapping(index, {
+                              ...mapping,
+                              action: event.target.value as GestureAction,
+                              triggerMode:
+                                event.target.value === 'toggleLowPassFocus'
+                                  ? 'edge'
+                                  : mapping.triggerMode
+                            })
+                          }
+                        >
+                          {GESTURE_ACTIONS.map((actionName) => (
+                            <MenuItem key={actionName} value={actionName}>
+                              {actionLabels[actionName]}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Stack>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <FormControl fullWidth>
+                        <InputLabel id={`trigger-mode-select-${index}`}>Trigger Mode</InputLabel>
+                        <Select
+                          labelId={`trigger-mode-select-${index}`}
+                          label="Trigger Mode"
+                          value={mapping.triggerMode}
+                          onChange={(event) =>
+                            setGestureMapping(index, {
+                              ...mapping,
+                              triggerMode: event.target.value as GestureTriggerMode
+                            })
+                          }
+                        >
+                          {GESTURE_TRIGGER_MODES.map((triggerMode) => (
+                            <MenuItem key={triggerMode} value={triggerMode}>
+                              {triggerModeLabels[triggerMode]}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <Button
+                        color="inherit"
+                        variant="outlined"
+                        onClick={() => removeGestureMapping(index)}
+                        sx={{ minWidth: { sm: 128 } }}
                       >
-                        {GESTURE_ACTIONS.map((actionName) => (
-                          <MenuItem key={actionName} value={actionName}>
-                            {actionLabels[actionName]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        Remove
+                      </Button>
+                    </Stack>
                   </Stack>
                 ))}
+
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  onClick={() => addGestureMapping()}
+                >
+                  Add Mapping
+                </Button>
               </Stack>
 
               <Divider />

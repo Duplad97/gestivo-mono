@@ -16,6 +16,8 @@ type AppState = {
   setRecordingActive: (value: boolean) => void;
   setGestureDebugOverlayEnabled: (value: boolean) => void;
   setGestureMapping: (index: number, mapping: GestureMappingRule) => void;
+  addGestureMapping: () => void;
+  removeGestureMapping: (index: number) => void;
   hydratePreferences: (preferences: PersistedAppPreferences) => void;
 };
 
@@ -24,11 +26,26 @@ const defaultSettings: AppSettings = {
   enableGestureDebugOverlay: true
 };
 
+export const createGestureMapping = (overrides?: Partial<GestureMappingRule>): GestureMappingRule => ({
+  gesture: 'pinch',
+  action: 'setLowPassFrequency',
+  triggerMode: 'continuous',
+  ...overrides
+});
+
 const defaultGestureMappings: GestureMappingRule[] = [
-  { gesture: 'fist', action: 'toggleLowPassFocus' },
-  { gesture: 'pinch', action: 'setLowPassFrequency' },
-  { gesture: 'thumbs_up', action: 'setOutputGain' }
+  createGestureMapping({ gesture: 'fist', action: 'toggleLowPassFocus', triggerMode: 'edge' }),
+  createGestureMapping({ gesture: 'pinch', action: 'setLowPassFrequency', triggerMode: 'continuous' }),
+  createGestureMapping({ gesture: 'thumbs_up', action: 'setOutputGain', triggerMode: 'continuous' })
 ];
+
+const normalizeGestureMapping = (mapping: GestureMappingRule): GestureMappingRule => {
+  return createGestureMapping(mapping);
+};
+
+const normalizeGestureMappings = (gestureMappings: GestureMappingRule[]): GestureMappingRule[] => {
+  return gestureMappings.map(normalizeGestureMapping);
+};
 
 export const getPersistedAppPreferences = (state: Pick<AppState, 'settings' | 'gestureMappings'>): PersistedAppPreferences => ({
   settings: state.settings,
@@ -60,12 +77,20 @@ export const useAppStore = create<AppState>((set) => ({
           return currentMapping;
         }
 
-        return mapping;
+        return normalizeGestureMapping(mapping);
       })
+    })),
+  addGestureMapping: () =>
+    set((state) => ({
+      gestureMappings: [...state.gestureMappings, createGestureMapping()]
+    })),
+  removeGestureMapping: (index) =>
+    set((state) => ({
+      gestureMappings: state.gestureMappings.filter((_, currentIndex) => currentIndex !== index)
     })),
   hydratePreferences: (preferences) =>
     set({
       settings: preferences.settings,
-      gestureMappings: preferences.gestureMappings
+      gestureMappings: normalizeGestureMappings(preferences.gestureMappings)
     })
 }));
