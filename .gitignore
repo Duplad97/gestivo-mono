@@ -34,6 +34,12 @@ Thumbs.db
 
 # Electron artifacts
 *.asar
+release/
+*.dmg
+*.app/
+
+# Generated icon build intermediates
+*.iconset/
 
 # Temporary files
 *.tmp
