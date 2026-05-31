@@ -1,5 +1,7 @@
 export type GestureName = 'fist' | 'open_hand' | 'pinch' | 'thumbs_up';
 
+export type GestureAction = 'setLowPassFrequency' | 'setOutputGain' | 'toggleLowPassFocus';
+
 export type GestureEvent = {
   gesture: GestureName;
   confidence: number;
@@ -9,5 +11,5 @@ export type GestureEvent = {
 
 export type GestureMappingRule = {
   gesture: GestureName;
-  action: 'setLowPassFrequency' | 'setOutputGain' | 'toggleLowPassFocus';
+  action: GestureAction;
 };

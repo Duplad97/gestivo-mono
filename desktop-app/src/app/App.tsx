@@ -19,6 +19,9 @@ import {
 import { AudioEngine } from '../features/audio/AudioEngine';
 import { CameraPreview } from '../features/camera/CameraPreview';
 import { useCameraStream } from '../features/camera/useCameraStream';
+import { GestureDetector } from '../features/gestures/GestureDetector';
+import { mapGestureToAction } from '../features/gestures/GestureMapper';
+import type { GestureEvent } from '../features/gestures/types';
 import { RecordingController } from '../features/recording/RecordingController';
 import { useAppStore } from '../stores/appStore';
 import { downloadBlob } from '../utils/file';
@@ -36,9 +39,14 @@ export const App = (): ReactElement => {
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('audio');
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
+  const [gestureError, setGestureError] = useState<string | null>(null);
 
   const audioEngineRef = useRef<AudioEngine>(new AudioEngine());
   const recorderRef = useRef<RecordingController>(new RecordingController());
+  const gestureDetectorRef = useRef<GestureDetector>(new GestureDetector());
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lowPassFocusEnabledRef = useRef(false);
 
   const {
     stream: cameraStream,
@@ -52,6 +60,7 @@ export const App = (): ReactElement => {
   const highPassFrequency = useAppStore((state) => state.highPassFrequency);
   const outputGain = useAppStore((state) => state.outputGain);
   const recordingActive = useAppStore((state) => state.recordingActive);
+  const gestureMappings = useAppStore((state) => state.gestureMappings);
   const setLowPassFrequency = useAppStore((state) => state.setLowPassFrequency);
   const setHighPassFrequency = useAppStore((state) => state.setHighPassFrequency);
   const setOutputGain = useAppStore((state) => state.setOutputGain);
@@ -78,6 +87,31 @@ export const App = (): ReactElement => {
     setStatusMessage('Audio chain started');
 
     return nextStream;
+  };
+
+  const applyGestureEvent = (event: GestureEvent): void => {
+    setLastGesture(event);
+
+    const action = mapGestureToAction(event, gestureMappings);
+
+    if (!action) {
+      return;
+    }
+
+    if (action.action === 'setLowPassFrequency' && action.value !== undefined) {
+      setLowPassFrequency(action.value);
+      return;
+    }
+
+    if (action.action === 'setOutputGain' && action.value !== undefined) {
+      setOutputGain(action.value);
+      return;
+    }
+
+    if (action.action === 'toggleLowPassFocus') {
+      lowPassFocusEnabledRef.current = !lowPassFocusEnabledRef.current;
+      setLowPassFrequency(lowPassFocusEnabledRef.current ? 1800 : 12000);
+    }
   };
 
   const startSources = async (): Promise<void> => {
@@ -148,9 +182,44 @@ export const App = (): ReactElement => {
   }, [outputGain]);
 
   useEffect(() => {
+    const videoElement = videoRef.current;
+
+    if (!cameraStream || !videoElement) {
+      gestureDetectorRef.current.stop();
+      return;
+    }
+
+    let cancelled = false;
+
+    const startDetection = async (): Promise<void> => {
+      try {
+        await gestureDetectorRef.current.start(videoElement, (event) => {
+          if (!cancelled) {
+            applyGestureEvent(event);
+          }
+        });
+        setGestureError(null);
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Gesture detection failed to initialize';
+          setGestureError(message);
+        }
+      }
+    };
+
+    void startDetection();
+
+    return () => {
+      cancelled = true;
+      gestureDetectorRef.current.stop();
+    };
+  }, [cameraStream, gestureMappings]);
+
+  useEffect(() => {
     return () => {
       stopCamera();
       micStream?.getTracks().forEach((track) => track.stop());
+      gestureDetectorRef.current.dispose();
       void audioEngineRef.current.dispose();
     };
   }, [micStream, stopCamera]);
@@ -180,6 +249,10 @@ export const App = (): ReactElement => {
                 label={audioState.initialized ? 'Audio Engine Live' : 'Audio Engine Idle'}
               />
               <Chip color={isCameraActive ? 'success' : 'default'} label={isCameraActive ? 'Camera Live' : 'Camera Idle'} />
+              <Chip
+                color={lastGesture ? 'secondary' : 'default'}
+                label={lastGesture ? `Gesture: ${lastGesture.gesture}` : 'Gesture Idle'}
+              />
             </Stack>
           </Stack>
 
@@ -187,8 +260,9 @@ export const App = (): ReactElement => {
 
           <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
             <Stack spacing={2} flex={2}>
-              <CameraPreview stream={cameraStream} />
+              <CameraPreview stream={cameraStream} videoRef={videoRef} />
               {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
+              {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
             </Stack>
 
             <Stack spacing={2} flex={1}>
@@ -230,6 +304,11 @@ export const App = (): ReactElement => {
               <Divider />
 
               <Typography variant="h6">Effects</Typography>
+              <Alert severity="success">
+                {lastGesture
+                  ? `Detected ${lastGesture.gesture} with ${Math.round(lastGesture.confidence * 100)}% confidence`
+                  : 'Show a hand to the camera to drive the audio controls.'}
+              </Alert>
               <Box>
                 <Typography gutterBottom>Low-pass Frequency: {Math.round(lowPassFrequency)} Hz</Typography>
                 <Slider

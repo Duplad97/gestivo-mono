@@ -1,16 +1,12 @@
 import { create } from 'zustand';
-
-export type GestureMapping = {
-  gesture: string;
-  action: string;
-};
+import type { GestureMappingRule } from '../features/gestures/types';
 
 type AppState = {
   lowPassFrequency: number;
   highPassFrequency: number;
   outputGain: number;
   recordingActive: boolean;
-  gestureMappings: GestureMapping[];
+  gestureMappings: GestureMappingRule[];
   setLowPassFrequency: (value: number) => void;
   setHighPassFrequency: (value: number) => void;
   setOutputGain: (value: number) => void;
@@ -25,7 +21,7 @@ export const useAppStore = create<AppState>((set) => ({
   gestureMappings: [
     { gesture: 'fist', action: 'toggleLowPassFocus' },
     { gesture: 'pinch', action: 'setLowPassFrequency' },
-    { gesture: 'thumbs_up', action: 'boostOutputGain' }
+    { gesture: 'thumbs_up', action: 'setOutputGain' }
   ],
   setLowPassFrequency: (value) => set({ lowPassFrequency: value }),
   setHighPassFrequency: (value) => set({ highPassFrequency: value }),
