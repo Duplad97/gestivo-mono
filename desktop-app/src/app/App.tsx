@@ -93,7 +93,11 @@ export const App = (): ReactElement => {
   const edgeRouteCount = gestureMappings.filter((mapping) => mapping.triggerMode === 'edge').length;
   const gestureRouterSummary = `${gestureMappings.length} shortcuts • ${edgeRouteCount} one-time • ${gestureMappings.length - edgeRouteCount} live control`;
   const effectDeckSummary = `Brightness ${Math.round(lowPassFrequency)} Hz • Cleanup ${Math.round(highPassFrequency)} Hz • Volume ${outputGain.toFixed(2)}x`;
-  const shouldShowStatusAlert = statusMessage !== 'Ready';
+  const requiredDeviceMessage = [cameraError, statusMessage].find(
+    (message) =>
+      typeof message === 'string'
+      && /(no (camera|microphone|mic) device was found|requested device not found|device not found)/i.test(message)
+  ) ?? null;
   const stageState = cameraError
     ? {
         icon: <WarningAmberRoundedIcon fontSize="small" />,
@@ -117,7 +121,7 @@ export const App = (): ReactElement => {
             tone: 'idle' as const
           };
 
-  const { gestureError, gestureFrame } = useGestureTracking({
+  const { gestureFrame } = useGestureTracking({
     cameraStream,
     videoRef,
     gestureMappings,
@@ -158,10 +162,7 @@ export const App = (): ReactElement => {
                 cameraStream={cameraStream}
                 gestureFrame={gestureFrame}
                 stageState={stageState}
-                cameraError={cameraError}
-                gestureError={gestureError}
-                shouldShowStatusAlert={shouldShowStatusAlert}
-                statusMessage={statusMessage}
+                requiredDeviceMessage={requiredDeviceMessage}
                 lastGestureLabel={lastGesture ? gestureLabels[lastGesture.gesture] : null}
                 currentGestureConfidence={currentGestureConfidence}
                 liveStatus={liveStatus}

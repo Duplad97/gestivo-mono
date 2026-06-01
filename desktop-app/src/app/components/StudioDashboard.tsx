@@ -62,10 +62,7 @@ type StudioDashboardProps = {
   cameraStream: MediaStream | null;
   gestureFrame: GestureFrame | null;
   stageState: StageState;
-  cameraError: string | null;
-  gestureError: string | null;
-  shouldShowStatusAlert: boolean;
-  statusMessage: string;
+  requiredDeviceMessage: string | null;
   lastGestureLabel: string | null;
   currentGestureConfidence: string;
   liveStatus: string;
@@ -106,10 +103,7 @@ export const StudioDashboard = ({
   cameraStream,
   gestureFrame,
   stageState,
-  cameraError,
-  gestureError,
-  shouldShowStatusAlert,
-  statusMessage,
+  requiredDeviceMessage,
   lastGestureLabel,
   currentGestureConfidence,
   liveStatus,
@@ -195,10 +189,6 @@ export const StudioDashboard = ({
             </CameraStage>
           </Box>
         </Paper>
-
-        {cameraError ? <Alert severity="error">{cameraError}</Alert> : null}
-        {gestureError ? <Alert severity="warning">{gestureError}</Alert> : null}
-        {shouldShowStatusAlert ? <Alert severity="info">{statusMessage}</Alert> : null}
       </Box>
 
       <Box className="sidebar-stack">
@@ -211,6 +201,7 @@ export const StudioDashboard = ({
                 <span className="session-panel-status-dot" />
                 <span>{recordingActive ? 'Recording live' : inputsActive ? 'Inputs armed' : 'Studio idle'}</span>
               </Box>
+              {requiredDeviceMessage ? <Alert severity="warning">{requiredDeviceMessage}</Alert> : null}
             </Box>
 
             <Box className="quick-status-grid">

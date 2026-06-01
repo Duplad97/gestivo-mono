@@ -1,10 +1,10 @@
 {
   "name": "gestivo-desktop-app",
   "productName": "Gestivo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Gesture-controlled audio effects desktop app",
-  "author": "",
+  "author": "Dávid Deák",
   "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -83,6 +83,7 @@
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "win": {
+      "icon": "resources/icons/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -106,6 +107,8 @@
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     },
     "nsis": {
+      "installerIcon": "resources/icons/icon.ico",
+      "uninstallerIcon": "resources/icons/icon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
