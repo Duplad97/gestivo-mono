@@ -480,9 +480,21 @@ p {
     width: 100%;
   }
 
+  .hero-headline-row {
+    align-items: center;
+    gap: 0;
+  }
+
+  .hero-headline-row h1 {
+    max-width: 14ch;
+    text-align: center;
+  }
+
   .hero-logo-inline {
     order: -1;
+    align-self: center;
     max-width: min(360px, 92vw);
+    margin-bottom: -10px;
   }
 
   .hero-actions,
