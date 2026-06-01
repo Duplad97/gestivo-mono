@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type MouseEvent, useEffect, useMemo, useState } from 'react'
 import appleLogo from '../assets/apple-logo.png'
 import githubLogo from '../assets/github-icon.webp'
 import linuxLogo from '../assets/linux-logo.png'
@@ -128,6 +128,18 @@ const pickBestAsset = (platform: Platform, assets: ReleaseAsset[]): ReleaseAsset
   return null
 }
 
+const startBackgroundDownload = (url: string) => {
+  const iframe = document.createElement('iframe')
+  iframe.style.display = 'none'
+  iframe.src = url
+  iframe.setAttribute('aria-hidden', 'true')
+  document.body.appendChild(iframe)
+
+  window.setTimeout(() => {
+    iframe.remove()
+  }, 60_000)
+}
+
 function App() {
   const [platform] = useState<Platform>(() => detectPlatform())
   const [release, setRelease] = useState<ReleaseResponse | null>(null)
@@ -209,12 +221,22 @@ function App() {
   const platformLogo = platform === 'unknown' ? fallbackPlatformLogo : platformLogos[platform]
 
   const primaryDownloadHref = bestAsset?.browser_download_url ?? RELEASE_URL
+  const directDownloadUrl = bestAsset?.browser_download_url ?? null
   const primaryDownloadLabel = bestAsset ? `Download for ${platformInfo.label}` : 'Download Latest Release'
   const releaseLabel = release?.tag_name ? `Latest version: ${release.tag_name}` : releaseError ? 'Latest release available on GitHub' : 'Checking latest release'
   const platformHint =
     platform === 'unknown'
       ? 'Choose the build that matches your operating system.'
       : `Recommended download prepared for ${platformInfo.label}.`
+
+  const handlePrimaryDownloadClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!directDownloadUrl) {
+      return
+    }
+
+    event.preventDefault()
+    startBackgroundDownload(directDownloadUrl)
+  }
 
   return (
     <main className="site-shell">
@@ -245,7 +267,7 @@ function App() {
           </p>
 
           <div className="hero-actions hero-actions-primary">
-            <a className="button button-primary button-download" href={primaryDownloadHref}>
+            <a className="button button-primary button-download" href={primaryDownloadHref} onClick={handlePrimaryDownloadClick}>
               <img className="button-platform-logo" src={platformLogo.src} alt={platformLogo.alt} />
               {primaryDownloadLabel}
             </a>
@@ -300,7 +322,7 @@ function App() {
           </p>
         </div>
         <div className="cta-actions">
-          <a className="button button-primary button-download" href={primaryDownloadHref}>
+          <a className="button button-primary button-download" href={primaryDownloadHref} onClick={handlePrimaryDownloadClick}>
             <img className="button-platform-logo" src={platformLogo.src} alt={platformLogo.alt} />
             {primaryDownloadLabel}
           </a>
