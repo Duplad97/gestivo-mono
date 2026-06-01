@@ -481,8 +481,8 @@ p {
   }
 
   .hero-logo-inline {
-    max-width: min(280px, 78vw);
-    max-height: 64px;
+    order: -1;
+    max-width: min(360px, 92vw);
   }
 
   .hero-actions,
