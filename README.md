@@ -9,6 +9,7 @@ It combines a live webcam stage, MediaPipe-based hand tracking, a real-time Web 
 The repository currently contains one application target:
 
 - `desktop-app`: Electron + React + TypeScript desktop app
+- `landing-site`: React + Vite landing page for downloads and release discovery
 
 What is already implemented:
 
@@ -22,6 +23,8 @@ What is already implemented:
 - Dedicated Settings screen for theme mode, recording mode, and debug overlay
 - Dynamic dark/light/system theming
 - Branded splash screen and macOS packaging flow
+- Landing site with OS-aware GitHub Release download links
+- Electron auto-updater wired to GitHub Releases
 
 ## Tech Stack
 
@@ -41,6 +44,7 @@ What is already implemented:
 .
 ├── AI_CONTEXT.md
 ├── README.md
+├── landing-site/
 ├── shared_assets/
 └── desktop-app/
     ├── electron/
@@ -108,14 +112,22 @@ From `desktop-app/`:
 - `npm run typecheck`: run the TypeScript project build checks
 - `npm run build`: build renderer and Electron outputs
 - `npm run dist:mac`: create a macOS app bundle and installer artifacts via `electron-builder`
+- `npm run dist:win`: create a Windows NSIS installer
+- `npm run dist:linux`: create a Linux AppImage
+- `npm run dist:all`: build all desktop release targets locally
+- `npm run release:mac`: build and publish macOS release artifacts to GitHub Releases
+- `npm run release:win`: build and publish Windows release artifacts to GitHub Releases
+- `npm run release:linux`: build and publish Linux release artifacts to GitHub Releases
 
 ## Packaging
 
-The project currently includes a macOS packaging path.
+The project now includes multi-platform desktop packaging targets.
 
 ```bash
 cd desktop-app
 npm run dist:mac
+npm run dist:win
+npm run dist:linux
 ```
 
 Generated release artifacts are written to:
@@ -123,6 +135,98 @@ Generated release artifacts are written to:
 - `desktop-app/release/`
 
 These files are generated output and are ignored by Git.
+
+Expected release artifact types:
+
+- macOS: `dmg` and `zip` universal builds
+- Windows: `nsis` installer
+- Linux: `AppImage`
+
+## Landing Page
+
+The download landing site lives in:
+
+- `landing-site/`
+
+What it does:
+
+- detects the visitor OS in the browser
+- fetches the latest GitHub Release metadata
+- presents a platform-aware desktop download CTA
+- falls back to the Releases page if the GitHub API is unavailable
+
+Run it locally:
+
+```bash
+cd landing-site
+npm install
+npm run dev
+```
+
+Build it for deployment:
+
+```bash
+cd landing-site
+npm run build
+```
+
+The production build output is written to:
+
+- `landing-site/dist/`
+
+For Vercel, set the project root to `landing-site`, use `npm run build` as the build command, and publish `dist` as the output directory.
+
+## Auto Updates
+
+The Electron app now uses `electron-updater` with GitHub Releases as the update source.
+
+Current updater behavior:
+
+- packaged builds check for updates on launch
+- the app checks again periodically while open
+- downloaded updates prompt the user to restart immediately or later
+
+Important practical note:
+
+- automatic updates work best with signed production builds, especially on macOS and Windows
+- unsigned preview builds may still install manually, but updater trust and OS prompts will be rougher
+- for public rollout, code signing and notarization should be treated as the next release-hardening step
+
+## GitHub Release Process
+
+The repository now includes:
+
+- GitHub publishing config in `desktop-app/package.json`
+- a release workflow at `.github/workflows/release.yml`
+
+Recommended release flow:
+
+1. Update the version in `desktop-app/package.json`.
+2. Commit the release changes.
+3. Push the commit to the default branch.
+4. Create and push a git tag like `v0.2.0`.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+What happens next:
+
+- GitHub Actions runs a build matrix for macOS, Windows, and Linux
+- each job runs the matching `release:*` script
+- `electron-builder` publishes artifacts and updater metadata to the tagged GitHub Release
+
+If you want to trigger the same workflow manually:
+
+- open the `Actions` tab on GitHub
+- run `Release Desktop Builds` with `workflow_dispatch`
+
+Requirements for publishing from GitHub Actions:
+
+- the repository must allow workflows to write release contents
+- the default `GITHUB_TOKEN` is used by the workflow
+- the repo should stay public, or you should handle private-release auth separately
 
 ## Branding Assets
 

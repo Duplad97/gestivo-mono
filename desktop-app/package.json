@@ -12,6 +12,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:all": "npm run build && electron-builder -mwl",
+    "release:mac": "npm run build && electron-builder --mac --publish always",
+    "release:win": "npm run build && electron-builder --win --publish always",
+    "release:linux": "npm run build && electron-builder --linux --publish always",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false"
   },
@@ -21,6 +27,7 @@
     "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
+    "electron-updater": "^6.8.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zustand": "^5.0.8"
@@ -40,6 +47,14 @@
   "build": {
     "appId": "com.gestivo.desktop",
     "productName": "Gestivo",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Duplad97",
+        "repo": "gestivo-mono",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "release"
     },
@@ -52,10 +67,47 @@
       "category": "public.app-category.music",
       "icon": "resources/icons/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "AudioVideo",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

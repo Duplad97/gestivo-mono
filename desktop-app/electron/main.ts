@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, session, systemPreferences } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,11 @@ const __dirname = path.dirname(__filename);
 
 const APP_NAME = 'Gestivo';
 const SPLASH_MIN_DURATION_MS = 1100;
+const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
+let mainWindow: BrowserWindow | null = null;
+let autoUpdaterInitialized = false;
+let updateCheckInterval: NodeJS.Timeout | null = null;
 const preferencesFilePath = (): string => path.join(app.getPath('userData'), 'preferences.json');
 const publicAssetPath = (fileName: string): string => path.join(isDev ? process.cwd() : path.join(__dirname, '../dist'), isDev ? 'public' : '', fileName);
 
@@ -30,6 +35,64 @@ const assetDataUrl = async (fileName: string): Promise<string> => {
 };
 
 const appIcon = () => nativeImage.createFromPath(publicAssetPath('logo.png'));
+
+const logAutoUpdaterError = (context: string, error: unknown): void => {
+  console.error(`[auto-updater] ${context}`, error);
+};
+
+const checkForUpdates = async (): Promise<void> => {
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    logAutoUpdaterError('Failed to check for updates.', error);
+  }
+};
+
+const configureAutoUpdater = (window: BrowserWindow): void => {
+  mainWindow = window;
+
+  if (isDev || autoUpdaterInitialized) {
+    return;
+  }
+
+  autoUpdaterInitialized = true;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('error', (error) => {
+    logAutoUpdaterError('Updater error.', error);
+  });
+
+  autoUpdater.on('update-downloaded', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: `${APP_NAME} update ready`,
+      message: 'A new version of Gestivo has been downloaded.',
+      detail: 'Restart now to install the update and relaunch the app.'
+    });
+
+    if (result.response === 0) {
+      setImmediate(() => autoUpdater.quitAndInstall());
+    }
+  });
+
+  void autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+    logAutoUpdaterError('Initial update check failed.', error);
+  });
+
+  if (!updateCheckInterval) {
+    updateCheckInterval = setInterval(() => {
+      void checkForUpdates();
+    }, UPDATE_CHECK_INTERVAL_MS);
+  }
+};
 
 const isMediaPermission = (permission: string): boolean => {
   return permission === 'media' || permission === 'camera' || permission === 'microphone' || permission === 'display-capture';
@@ -351,6 +414,13 @@ const createWindow = async (): Promise<void> => {
       sandbox: true
     }
   });
+  mainWindow = win;
+
+  win.on('closed', () => {
+    if (mainWindow === win) {
+      mainWindow = null;
+    }
+  });
 
   const finishLaunch = async (): Promise<void> => {
     const elapsed = Date.now() - splashStartedAt;
@@ -375,6 +445,7 @@ const createWindow = async (): Promise<void> => {
   }
 
   await win.loadFile(path.join(__dirname, '../dist/index.html'));
+  configureAutoUpdater(win);
 };
 
 ipcMain.handle('recording:save', async (_event, data: ArrayBuffer, defaultFileName: string) => {
@@ -435,6 +506,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (updateCheckInterval) {
+    clearInterval(updateCheckInterval);
+    updateCheckInterval = null;
+  }
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
