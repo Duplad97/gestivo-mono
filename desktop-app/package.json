@@ -1,7 +1,7 @@
 {
   "name": "gestivo-desktop-app",
   "productName": "Gestivo",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gesture-controlled audio effects desktop app",
   "author": "Dávid Deák",
