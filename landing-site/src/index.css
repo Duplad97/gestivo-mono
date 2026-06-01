@@ -168,9 +168,12 @@ img {
 }
 
 .hero-logo-inline {
-  width: min(340px, 40vw);
+  width: auto;
+  max-width: min(340px, 40vw);
+  height: auto;
   min-width: 0;
-  flex: 0 1 340px;
+  flex: 0 1 auto;
+  object-fit: contain;
 }
 
 .eyebrow,
@@ -289,6 +292,14 @@ p {
 
 .button-download {
   min-width: 240px;
+}
+
+.button.is-disabled {
+  opacity: 0.56;
+  filter: saturate(0.25);
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
 }
 
 .warning-banner {
@@ -431,7 +442,7 @@ p {
   }
 
   .hero-logo-inline {
-    width: min(280px, 48vw);
+    max-width: min(280px, 48vw);
   }
 
   .hero-headline-row {
@@ -470,7 +481,8 @@ p {
   }
 
   .hero-logo-inline {
-    width: min(280px, 78vw);
+    max-width: min(280px, 78vw);
+    max-height: 64px;
   }
 
   .hero-actions,

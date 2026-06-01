@@ -4,7 +4,7 @@ import githubLogo from '../assets/github-icon.webp'
 import linuxLogo from '../assets/linux-logo.png'
 import windowsLogo from '../assets/windows-logo.svg'
 
-type Platform = 'mac' | 'win' | 'linux' | 'unknown'
+type Platform = 'mac' | 'win' | 'linux' | 'unknown' | 'unsupported'
 
 type ReleaseAsset = {
   name: string
@@ -16,7 +16,7 @@ type ReleaseResponse = {
   assets?: ReleaseAsset[]
 }
 
-type SupportedPlatform = Exclude<Platform, 'unknown'>
+type DownloadablePlatform = Exclude<Platform, 'unknown' | 'unsupported'>
 type Feature = {
   eyebrow: string
   title: string
@@ -48,10 +48,15 @@ const platformMeta: Record<Platform, { label: string; description: string; badge
     label: 'Your OS',
     description: 'Choose the installer that matches your operating system.',
     badge: 'Best match'
+  },
+  unsupported: {
+    label: 'Unsupported',
+    description: 'Gestivo desktop builds are currently available only on macOS, Windows, and Linux desktop systems.',
+    badge: 'Unsupported'
   }
 }
 
-const platformLogos: Record<SupportedPlatform, { src: string; alt: string }> = {
+const platformLogos: Record<DownloadablePlatform, { src: string; alt: string }> = {
   mac: {
     src: appleLogo,
     alt: 'Apple logo'
@@ -91,6 +96,12 @@ const features: Feature[] = [
 
 const detectPlatform = (): Platform => {
   const userAgent = navigator.userAgent.toLowerCase()
+  const platform = navigator.platform?.toLowerCase() ?? ''
+  const isTouchMac = platform === 'macintel' && navigator.maxTouchPoints > 1
+
+  if (/iphone|ipad|ipod|android|windows phone|blackberry|opera mini|mobile/.test(userAgent) || isTouchMac) {
+    return 'unsupported'
+  }
 
   if (userAgent.includes('mac')) {
     return 'mac'
@@ -216,20 +227,28 @@ function App() {
   }, [])
 
   const assets = release?.assets ?? []
+  const isUnsupportedPlatform = platform === 'unsupported'
   const bestAsset = useMemo(() => pickBestAsset(platform, assets), [assets, platform])
   const platformInfo = platformMeta[platform]
-  const platformLogo = platform === 'unknown' ? fallbackPlatformLogo : platformLogos[platform]
+  const platformLogo = platform === 'mac' || platform === 'win' || platform === 'linux' ? platformLogos[platform] : fallbackPlatformLogo
 
-  const primaryDownloadHref = bestAsset?.browser_download_url ?? RELEASE_URL
-  const directDownloadUrl = bestAsset?.browser_download_url ?? null
-  const primaryDownloadLabel = bestAsset ? `Download for ${platformInfo.label}` : 'Download Latest Release'
+  const primaryDownloadHref = isUnsupportedPlatform ? '#' : bestAsset?.browser_download_url ?? RELEASE_URL
+  const directDownloadUrl = isUnsupportedPlatform ? null : bestAsset?.browser_download_url ?? null
+  const primaryDownloadLabel = isUnsupportedPlatform ? 'Desktop Builds Not Available on This Device' : bestAsset ? `Download for ${platformInfo.label}` : 'Download Latest Release'
   const releaseLabel = release?.tag_name ? `Latest version: ${release.tag_name}` : releaseError ? 'Latest release available on GitHub' : 'Checking latest release'
   const platformHint =
-    platform === 'unknown'
-      ? 'Choose the build that matches your operating system.'
-      : `Recommended download prepared for ${platformInfo.label}.`
+    platform === 'unsupported'
+      ? 'This device OS is not supported for direct desktop install. Use a desktop computer to download Gestivo.'
+      : platform === 'unknown'
+        ? 'Choose the build that matches your operating system.'
+        : `Recommended download prepared for ${platformInfo.label}.`
 
   const handlePrimaryDownloadClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (isUnsupportedPlatform) {
+      event.preventDefault()
+      return
+    }
+
     if (!directDownloadUrl) {
       return
     }
@@ -267,7 +286,12 @@ function App() {
           </p>
 
           <div className="hero-actions hero-actions-primary">
-            <a className="button button-primary button-download" href={primaryDownloadHref} onClick={handlePrimaryDownloadClick}>
+            <a
+              className={`button button-primary button-download${isUnsupportedPlatform ? ' is-disabled' : ''}`}
+              href={primaryDownloadHref}
+              onClick={handlePrimaryDownloadClick}
+              aria-disabled={isUnsupportedPlatform}
+            >
               <img className="button-platform-logo" src={platformLogo.src} alt={platformLogo.alt} />
               {primaryDownloadLabel}
             </a>
@@ -322,7 +346,12 @@ function App() {
           </p>
         </div>
         <div className="cta-actions">
-          <a className="button button-primary button-download" href={primaryDownloadHref} onClick={handlePrimaryDownloadClick}>
+          <a
+            className={`button button-primary button-download${isUnsupportedPlatform ? ' is-disabled' : ''}`}
+            href={primaryDownloadHref}
+            onClick={handlePrimaryDownloadClick}
+            aria-disabled={isUnsupportedPlatform}
+          >
             <img className="button-platform-logo" src={platformLogo.src} alt={platformLogo.alt} />
             {primaryDownloadLabel}
           </a>
