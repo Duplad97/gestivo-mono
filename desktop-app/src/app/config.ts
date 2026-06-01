@@ -11,14 +11,14 @@ export const gestureLabels: Record<GestureName, string> = {
 };
 
 export const actionLabels: Record<GestureAction, string> = {
-  setLowPassFrequency: 'Set Low-pass Frequency',
-  setOutputGain: 'Set Output Gain',
-  toggleLowPassFocus: 'Toggle Low-pass Focus'
+  setLowPassFrequency: 'Adjust Brightness',
+  setOutputGain: 'Adjust Volume',
+  toggleLowPassFocus: 'Toggle Muffled Focus'
 };
 
 export const triggerModeLabels: Record<GestureTriggerMode, string> = {
-  continuous: 'Continuous',
-  edge: 'Edge Triggered'
+  continuous: 'While Held',
+  edge: 'Once Per Gesture'
 };
 
 export const panelSx = {

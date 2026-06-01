@@ -86,7 +86,7 @@ body::before {
 .app-shell {
   position: relative;
   z-index: 1;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 10px 0 24px;
 }
 
@@ -118,6 +118,7 @@ body::before {
 .app-frame {
   position: relative;
   overflow: hidden;
+  min-height: calc(100dvh - 52px);
 }
 
 .app-frame::before {
@@ -126,6 +127,10 @@ body::before {
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 34%, transparent 68%, color-mix(in srgb, var(--app-accent-purple) 18%, transparent));
   pointer-events: none;
+}
+
+.app-frame-stack {
+  min-height: calc(100dvh - 112px);
 }
 
 .app-section-label {
@@ -263,6 +268,9 @@ body::before {
   display: grid;
   grid-template-columns: minmax(0, 1.85fr) minmax(320px, 0.9fr);
   gap: 16px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .stage-stack,
@@ -270,6 +278,11 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
+}
+
+.sidebar-stack {
+  min-width: 0;
 }
 
 .glass-panel {
@@ -418,7 +431,7 @@ body::before {
 
 .camera-shell {
   position: relative;
-  min-height: 480px;
+  min-height: clamp(460px, 58vh, 760px);
   padding: 14px;
   border-radius: 28px;
   background:
@@ -489,8 +502,8 @@ body::before {
 video {
   display: block;
   width: 100%;
-  min-height: 468px;
-  max-height: 620px;
+  min-height: clamp(420px, 54vh, 700px);
+  max-height: 68vh;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: #0a0d13;
@@ -807,6 +820,53 @@ video {
   transform: rotate(45deg);
 }
 
+.control-hub {
+  min-width: 0;
+}
+
+.control-dialog-paper {
+  border: 1px solid var(--app-surface-border);
+  border-radius: 28px !important;
+  background:
+    linear-gradient(180deg, rgba(28, 22, 56, 0.96), rgba(11, 14, 28, 0.985)) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+
+.control-hub-tabs {
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid var(--app-surface-border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--app-text-primary) 4%, transparent), color-mix(in srgb, var(--app-text-primary) 2%, transparent));
+}
+
+.control-hub-tabs .MuiTabs-indicator {
+  height: calc(100% - 8px);
+  margin: 4px;
+  border-radius: 14px;
+  background: rgba(127, 240, 210, 0.16);
+}
+
+.control-hub-tabs .MuiTab-root {
+  min-height: 44px;
+  border-radius: 14px;
+  color: rgba(226, 232, 255, 0.76);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  z-index: 1;
+}
+
+.control-hub-tabs .Mui-selected {
+  color: #eff3ff;
+}
+
+.control-hub-panel {
+  min-width: 0;
+}
+
 .mapping-grid {
   display: grid;
   gap: 12px;
@@ -929,6 +989,11 @@ video {
 }
 
 @media (max-width: 1200px) {
+  .app-frame,
+  .app-frame-stack {
+    min-height: 0;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }

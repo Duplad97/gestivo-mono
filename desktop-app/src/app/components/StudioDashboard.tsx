@@ -1,5 +1,6 @@
-import type { ReactElement, RefObject } from 'react';
+import { useState, type ReactElement, type RefObject } from 'react';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
 import FrontHandRoundedIcon from '@mui/icons-material/FrontHandRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
@@ -12,20 +13,23 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Slider,
   Stack,
+  Tab,
+  Tabs,
   Typography
 } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
@@ -137,6 +141,9 @@ export const StudioDashboard = ({
   onAddGestureMapping,
   onRemoveGestureMapping
 }: StudioDashboardProps): ReactElement => {
+  const [activeSidebarPanel, setActiveSidebarPanel] = useState<'shortcuts' | 'sound'>('shortcuts');
+  const [controlsDialogOpen, setControlsDialogOpen] = useState(false);
+
   return (
     <Box className="dashboard-grid">
       <Box className="stage-stack">
@@ -247,195 +254,223 @@ export const StudioDashboard = ({
               >
                 Reset Inputs
               </Button>
+              <Button
+                variant="outlined"
+                color="inherit"
+                fullWidth
+                onClick={() => setControlsDialogOpen(true)}
+                startIcon={<TuneRoundedIcon />}
+                sx={{ gridColumn: '1 / -1' }}
+              >
+                Open Controls
+              </Button>
             </Box>
           </Stack>
         </Paper>
+      </Box>
 
-        <Accordion disableGutters defaultExpanded={false} className="glass-accordion">
-          <AccordionSummary
-            expandIcon={<Box component="span" className="accordion-icon">+</Box>}
-            aria-controls="gesture-router-content"
-            id="gesture-router-header"
-          >
-            <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
-              <Box className="accordion-heading">
-                <HubRoundedIcon fontSize="small" className="accordion-heading-icon" />
-                <Box>
-                  <Typography className="app-section-label">Gesture Router</Typography>
-                  <Typography variant="h6" sx={{ mt: 0.5 }}>Mapping matrix</Typography>
-                  <Typography variant="caption" color="text.secondary" className="accordion-summary-copy">
-                    {gestureRouterSummary}
-                  </Typography>
-                </Box>
+      <Dialog
+        open={controlsDialogOpen}
+        onClose={() => setControlsDialogOpen(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          className: 'control-dialog-paper'
+        }}
+      >
+        <DialogTitle sx={{ px: 3, pt: 3, pb: 1.5 }}>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start" justifyContent="space-between">
+            <Box className="accordion-heading">
+              {activeSidebarPanel === 'shortcuts' ? <HubRoundedIcon fontSize="small" className="accordion-heading-icon" /> : <TuneRoundedIcon fontSize="small" className="accordion-heading-icon" />}
+              <Box>
+                <Typography className="app-section-label">Control Hub</Typography>
+                <Typography variant="h6" sx={{ mt: 0.5 }}>
+                  {activeSidebarPanel === 'shortcuts' ? 'Gesture shortcuts' : 'Sound controls'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" className="accordion-summary-copy">
+                  {activeSidebarPanel === 'shortcuts' ? gestureRouterSummary : effectDeckSummary}
+                </Typography>
               </Box>
-              <Chip size="small" label={`${gestureMappings.length} routes`} />
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip size="small" label={activeSidebarPanel === 'shortcuts' ? `${gestureMappings.length} shortcuts` : `${outputGain.toFixed(2)}x output`} />
+              <IconButton color="inherit" onClick={() => setControlsDialogOpen(false)} aria-label="Close controls dialog">
+                <CloseRoundedIcon />
+              </IconButton>
             </Stack>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Stack spacing={2}>
-              {gestureMappingWarnings.length > 0 ? <Alert severity="warning">{gestureMappingWarnings.join(' ')}</Alert> : null}
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 3 }}>
+          <Stack spacing={2.25}>
+            <Tabs
+              value={activeSidebarPanel}
+              onChange={(_event, value: 'shortcuts' | 'sound') => setActiveSidebarPanel(value)}
+              className="control-hub-tabs"
+              variant="fullWidth"
+            >
+              <Tab value="shortcuts" label="Gesture Shortcuts" />
+              <Tab value="sound" label="Sound Controls" />
+            </Tabs>
 
-              <Box className="mapping-grid">
-                {gestureMappings.map((mapping, index) => (
-                  <Box key={`${index}-${mapping.gesture}-${mapping.action}-${mapping.triggerMode}`} className="mapping-card">
-                    <Stack spacing={1.2}>
-                      <Box className="mapping-card-header">
-                        <Box>
-                          <Typography className="app-section-label mapping-title-row"><PlayArrowRoundedIcon fontSize="inherit" /> Route {String(index + 1).padStart(2, '0')}</Typography>
-                          <Box className="mapping-route-line">
-                            <span className="mapping-route-token">{gestureLabels[mapping.gesture]}</span>
-                            <span className="mapping-route-arrow">to</span>
-                            <span className="mapping-route-token">{actionLabels[mapping.action]}</span>
-                            <span className="mapping-route-arrow">via</span>
-                            <span className={`mapping-route-token ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>{triggerModeLabels[mapping.triggerMode]}</span>
+            {activeSidebarPanel === 'shortcuts' ? (
+              <Stack spacing={2} className="control-hub-panel">
+                {gestureMappingWarnings.length > 0 ? <Alert severity="warning">{gestureMappingWarnings.join(' ')}</Alert> : null}
+                <Typography variant="body2" color="text.secondary">
+                  Pick a hand gesture, choose what it should change, then decide whether it should react continuously or only once when detected.
+                </Typography>
+
+                <Box className="mapping-grid">
+                  {gestureMappings.map((mapping, index) => (
+                    <Box key={`${index}-${mapping.gesture}-${mapping.action}-${mapping.triggerMode}`} className="mapping-card">
+                      <Stack spacing={1.2}>
+                        <Box className="mapping-card-header">
+                          <Box>
+                            <Typography className="app-section-label mapping-title-row"><PlayArrowRoundedIcon fontSize="inherit" /> Shortcut {String(index + 1).padStart(2, '0')}</Typography>
+                            <Box className="mapping-route-line">
+                              <span className="mapping-route-token">{gestureLabels[mapping.gesture]}</span>
+                              <span className="mapping-route-arrow">changes</span>
+                              <span className="mapping-route-token">{actionLabels[mapping.action]}</span>
+                              <span className="mapping-route-arrow">using</span>
+                              <span className={`mapping-route-token ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>{triggerModeLabels[mapping.triggerMode]}</span>
+                            </Box>
+                          </Box>
+                          <Box className={`mapping-trigger-badge ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>
+                            {triggerModeLabels[mapping.triggerMode]}
                           </Box>
                         </Box>
-                        <Box className={`mapping-trigger-badge ${mapping.triggerMode === 'edge' ? 'is-edge' : ''}`}>
-                          {triggerModeLabels[mapping.triggerMode]}
-                        </Box>
-                      </Box>
 
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                        <FormControl fullWidth sx={fieldSx}>
-                          <InputLabel id={`gesture-select-${index}`}>Gesture</InputLabel>
-                          <Select
-                            labelId={`gesture-select-${index}`}
-                            label="Gesture"
-                            value={mapping.gesture}
-                            onChange={(event) =>
-                              onSetGestureMapping(index, {
-                                ...mapping,
-                                gesture: event.target.value as GestureName
-                              })
-                            }
-                          >
-                            {GESTURE_NAMES.map((gestureName) => (
-                              <MenuItem key={gestureName} value={gestureName}>
-                                {gestureLabels[gestureName]}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <FormControl fullWidth sx={fieldSx}>
+                            <InputLabel id={`gesture-select-${index}`}>Hand Gesture</InputLabel>
+                            <Select
+                              labelId={`gesture-select-${index}`}
+                              label="Hand Gesture"
+                              value={mapping.gesture}
+                              onChange={(event) =>
+                                onSetGestureMapping(index, {
+                                  ...mapping,
+                                  gesture: event.target.value as GestureName
+                                })
+                              }
+                            >
+                              {GESTURE_NAMES.map((gestureName) => (
+                                <MenuItem key={gestureName} value={gestureName}>
+                                  {gestureLabels[gestureName]}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
 
-                        <FormControl fullWidth sx={fieldSx}>
-                          <InputLabel id={`action-select-${index}`}>Action</InputLabel>
-                          <Select
-                            labelId={`action-select-${index}`}
-                            label="Action"
-                            value={mapping.action}
-                            onChange={(event) =>
-                              onSetGestureMapping(index, {
-                                ...mapping,
-                                action: event.target.value as GestureAction,
-                                triggerMode: event.target.value === 'toggleLowPassFocus' ? 'edge' : mapping.triggerMode
-                              })
-                            }
-                          >
-                            {GESTURE_ACTIONS.map((actionName) => (
-                              <MenuItem key={actionName} value={actionName}>
-                                {actionLabels[actionName]}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                          <FormControl fullWidth sx={fieldSx}>
+                            <InputLabel id={`action-select-${index}`}>What It Changes</InputLabel>
+                            <Select
+                              labelId={`action-select-${index}`}
+                              label="What It Changes"
+                              value={mapping.action}
+                              onChange={(event) =>
+                                onSetGestureMapping(index, {
+                                  ...mapping,
+                                  action: event.target.value as GestureAction,
+                                  triggerMode: event.target.value === 'toggleLowPassFocus' ? 'edge' : mapping.triggerMode
+                                })
+                              }
+                            >
+                              {GESTURE_ACTIONS.map((actionName) => (
+                                <MenuItem key={actionName} value={actionName}>
+                                  {actionLabels[actionName]}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Stack>
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <FormControl fullWidth sx={fieldSx}>
+                            <InputLabel id={`trigger-mode-select-${index}`}>Reaction Style</InputLabel>
+                            <Select
+                              labelId={`trigger-mode-select-${index}`}
+                              label="Reaction Style"
+                              value={mapping.triggerMode}
+                              onChange={(event) =>
+                                onSetGestureMapping(index, {
+                                  ...mapping,
+                                  triggerMode: event.target.value as GestureTriggerMode
+                                })
+                              }
+                            >
+                              {GESTURE_TRIGGER_MODES.map((triggerMode) => (
+                                <MenuItem key={triggerMode} value={triggerMode}>
+                                  {triggerModeLabels[triggerMode]}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+
+                          <Button variant="outlined" color="inherit" onClick={() => onRemoveGestureMapping(index)} sx={{ minWidth: { sm: 124 } }} startIcon={<RestartAltRoundedIcon />}>
+                            Remove
+                          </Button>
+                        </Stack>
                       </Stack>
+                    </Box>
+                  ))}
 
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                        <FormControl fullWidth sx={fieldSx}>
-                          <InputLabel id={`trigger-mode-select-${index}`}>Trigger Mode</InputLabel>
-                          <Select
-                            labelId={`trigger-mode-select-${index}`}
-                            label="Trigger Mode"
-                            value={mapping.triggerMode}
-                            onChange={(event) =>
-                              onSetGestureMapping(index, {
-                                ...mapping,
-                                triggerMode: event.target.value as GestureTriggerMode
-                              })
-                            }
-                          >
-                            {GESTURE_TRIGGER_MODES.map((triggerMode) => (
-                              <MenuItem key={triggerMode} value={triggerMode}>
-                                {triggerModeLabels[triggerMode]}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-
-                        <Button variant="outlined" color="inherit" onClick={() => onRemoveGestureMapping(index)} sx={{ minWidth: { sm: 124 } }} startIcon={<RestartAltRoundedIcon />}>
-                          Remove
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                ))}
-
-                <Button variant="outlined" color="inherit" onClick={onAddGestureMapping} startIcon={<AutoAwesomeRoundedIcon />}>
-                  Add Mapping
-                </Button>
-              </Box>
-            </Stack>
-          </AccordionDetails>
-        </Accordion>
-
-        <Accordion disableGutters defaultExpanded={false} className="glass-accordion">
-          <AccordionSummary
-            expandIcon={<Box component="span" className="accordion-icon">+</Box>}
-            aria-controls="effect-deck-content"
-            id="effect-deck-header"
-          >
-            <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
-              <Box className="accordion-heading">
-                <TuneRoundedIcon fontSize="small" className="accordion-heading-icon" />
-                <Box>
-                  <Typography className="app-section-label">Effect Sculpting</Typography>
-                  <Typography variant="h6" sx={{ mt: 0.5 }}>Live parameter deck</Typography>
-                  <Typography variant="caption" color="text.secondary" className="accordion-summary-copy">
-                    {effectDeckSummary}
-                  </Typography>
+                  <Button variant="outlined" color="inherit" onClick={onAddGestureMapping} startIcon={<AutoAwesomeRoundedIcon />}>
+                    Add Shortcut
+                  </Button>
                 </Box>
-              </Box>
-              <Chip size="small" label={`${outputGain.toFixed(2)}x output`} />
-            </Stack>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Stack spacing={2}>
-              <Alert severity="success">
-                {lastGestureLabel
-                  ? `${lastGestureLabel} is driving the chain with ${currentGestureConfidence} confidence.`
-                  : 'The effect deck will react as soon as a tracked gesture is recognized.'}
-              </Alert>
+              </Stack>
+            ) : (
+              <Stack spacing={2} className="control-hub-panel">
+                <Alert severity="success">
+                  {lastGestureLabel
+                    ? `${lastGestureLabel} is currently changing the sound with ${currentGestureConfidence} confidence.`
+                    : 'These sound controls will react as soon as a tracked gesture is recognized.'}
+                </Alert>
 
-              <Box className="effect-card">
-                <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><AutoAwesomeRoundedIcon fontSize="inherit" /> Tone shaping</Typography>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography variant="body2">Low-pass Frequency</Typography>
-                  <Typography variant="body2" color="text.secondary">{Math.round(lowPassFrequency)} Hz</Typography>
-                </Stack>
-                <Slider min={100} max={20000} value={lowPassFrequency} onChange={(_event, value) => onSetLowPassFrequency(value as number)} />
-              </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Think of these as simple sound-shaping controls: brightness, low-end cleanup, and overall volume.
+                </Typography>
 
-              <Box className="effect-card">
-                <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><TuneRoundedIcon fontSize="inherit" /> Clarity shaping</Typography>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography variant="body2">High-pass Frequency</Typography>
-                  <Typography variant="body2" color="text.secondary">{Math.round(highPassFrequency)} Hz</Typography>
-                </Stack>
-                <Slider min={20} max={5000} value={highPassFrequency} onChange={(_event, value) => onSetHighPassFrequency(value as number)} />
-              </Box>
+                <Box className="effect-card">
+                  <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><AutoAwesomeRoundedIcon fontSize="inherit" /> Brightness</Typography>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="body2">Brightness Filter</Typography>
+                    <Typography variant="body2" color="text.secondary">{Math.round(lowPassFrequency)} Hz</Typography>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+                    Lower values sound softer and more muffled. Higher values sound brighter and more open.
+                  </Typography>
+                  <Slider min={100} max={20000} value={lowPassFrequency} onChange={(_event, value) => onSetLowPassFrequency(value as number)} />
+                </Box>
 
-              <Box className="effect-card">
-                <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><VolumeUpRoundedIcon fontSize="inherit" /> Output staging</Typography>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography variant="body2">Output Gain</Typography>
-                  <Typography variant="body2" color="text.secondary">{outputGain.toFixed(2)}x</Typography>
-                </Stack>
-                <Slider min={0} max={2} step={0.01} value={outputGain} onChange={(_event, value) => onSetOutputGain(value as number)} />
-              </Box>
-            </Stack>
-          </AccordionDetails>
-        </Accordion>
-      </Box>
+                <Box className="effect-card">
+                  <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><TuneRoundedIcon fontSize="inherit" /> Low-End Cleanup</Typography>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="body2">Rumble Filter</Typography>
+                    <Typography variant="body2" color="text.secondary">{Math.round(highPassFrequency)} Hz</Typography>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+                    Raise this to remove rumble and handling noise. Lower it to keep more bass and body.
+                  </Typography>
+                  <Slider min={20} max={5000} value={highPassFrequency} onChange={(_event, value) => onSetHighPassFrequency(value as number)} />
+                </Box>
+
+                <Box className="effect-card">
+                  <Typography className="app-section-label effect-card-label" sx={{ mb: 1 }}><VolumeUpRoundedIcon fontSize="inherit" /> Volume</Typography>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="body2">Output Volume</Typography>
+                    <Typography variant="body2" color="text.secondary">{outputGain.toFixed(2)}x</Typography>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+                    Controls how loud the processed audio feels overall.
+                  </Typography>
+                  <Slider min={0} max={2} step={0.01} value={outputGain} onChange={(_event, value) => onSetOutputGain(value as number)} />
+                </Box>
+              </Stack>
+            )}
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

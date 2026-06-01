@@ -91,8 +91,8 @@ export const App = (): ReactElement => {
   const sessionPanelTone = recordingActive ? 'is-recording' : inputsActive ? 'is-live' : 'is-idle';
   const modeTileIcon = settings.recordingMode === 'video' ? <VideocamRoundedIcon className="metric-icon" fontSize="small" /> : <GraphicEqRoundedIcon className="metric-icon" fontSize="small" />;
   const edgeRouteCount = gestureMappings.filter((mapping) => mapping.triggerMode === 'edge').length;
-  const gestureRouterSummary = `${gestureMappings.length} routes • ${edgeRouteCount} edge • ${gestureMappings.length - edgeRouteCount} continuous`;
-  const effectDeckSummary = `LP ${Math.round(lowPassFrequency)} Hz • HP ${Math.round(highPassFrequency)} Hz • ${outputGain.toFixed(2)}x`;
+  const gestureRouterSummary = `${gestureMappings.length} shortcuts • ${edgeRouteCount} one-time • ${gestureMappings.length - edgeRouteCount} live control`;
+  const effectDeckSummary = `Brightness ${Math.round(lowPassFrequency)} Hz • Cleanup ${Math.round(highPassFrequency)} Hz • Volume ${outputGain.toFixed(2)}x`;
   const shouldShowStatusAlert = statusMessage !== 'Ready';
   const stageState = cameraError
     ? {
@@ -130,7 +130,7 @@ export const App = (): ReactElement => {
       <ShaderBackdrop />
       <Container maxWidth="xl">
         <Paper className="glass-panel app-frame" elevation={0} sx={{ p: { xs: 1.5, md: 2.25, xl: 2.5 }, borderRadius: '32px' }}>
-          <Stack spacing={2}>
+          <Stack spacing={2} className="app-frame-stack">
             <AppHeader
               activeScreen={activeScreen}
               inputsActive={inputsActive}
