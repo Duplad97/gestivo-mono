@@ -31,16 +31,29 @@ export const createAppTheme = (mode: ResolvedThemeMode) => createTheme({
         }
   },
   typography: {
-    fontFamily: "'Space Grotesk', 'Sora', sans-serif",
+    fontFamily: "'Revalia', 'Space Grotesk', 'Sora', sans-serif",
+    h3: {
+      fontFamily: "'Revalia', 'Space Grotesk', 'Sora', sans-serif",
+      fontWeight: 400,
+      letterSpacing: 0,
+      lineHeight: 1.08
+    },
     h2: {
       fontWeight: 700,
       letterSpacing: -1.8,
       lineHeight: 0.95
     },
     h4: {
-      fontWeight: 700,
-      letterSpacing: -0.6,
-      lineHeight: 1.05
+      fontFamily: "'Revalia', 'Space Grotesk', 'Sora', sans-serif",
+      fontWeight: 400,
+      letterSpacing: 0,
+      lineHeight: 1.08
+    },
+    h5: {
+      fontFamily: "'Revalia', 'Space Grotesk', 'Sora', sans-serif",
+      fontWeight: 400,
+      letterSpacing: 0,
+      lineHeight: 1.08
     },
     h6: {
       fontWeight: 700,

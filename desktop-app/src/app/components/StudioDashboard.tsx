@@ -11,6 +11,7 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import SensorsRoundedIcon from '@mui/icons-material/SensorsRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import {
   Alert,
@@ -143,43 +144,45 @@ export const StudioDashboard = ({
 }: StudioDashboardProps): ReactElement => {
   const [activeSidebarPanel, setActiveSidebarPanel] = useState<'shortcuts' | 'sound'>('shortcuts');
   const [controlsDialogOpen, setControlsDialogOpen] = useState(false);
+  const [cameraUiHidden, setCameraUiHidden] = useState(false);
 
   return (
     <Box className="dashboard-grid">
       <Box className="stage-stack">
         <Paper className="glass-panel" elevation={0} sx={{ p: 0, borderRadius: '28px' }}>
           <Box className="camera-shell">
-            <Box className="stage-caption">
-              <Typography className="app-section-label stage-caption-label">Live Visual Stage</Typography>
-              <Typography variant="body2" className="stage-caption-title">
-                Performance camera
-              </Typography>
-              <Typography variant="caption" color="text.secondary" className="stage-caption-copy">
-                {lastGestureLabel ? `${lastGestureLabel} detected` : 'Awaiting hand input'}
-              </Typography>
-            </Box>
+            {!cameraUiHidden ? (
+              <Box className="stage-chrome">
+                <Box className={`stage-pill ${inputsActive ? 'is-active' : ''}`}>
+                  <SensorsRoundedIcon fontSize="small" />
+                  <span className="stage-pill-label">Stage</span>
+                  <span className="stage-pill-value">{liveStatus}</span>
+                </Box>
+                <Box className={`stage-pill ${lastGestureLabel ? 'is-active' : ''}`}>
+                  <FrontHandRoundedIcon fontSize="small" />
+                  <span className="stage-pill-label">Tracking</span>
+                  <span className="stage-pill-value">{currentGestureConfidence}</span>
+                </Box>
+                <Box className={`stage-pill ${debugOverlayEnabled ? 'is-active' : ''}`}>
+                  <VisibilityRoundedIcon fontSize="small" />
+                  <span className="stage-pill-label">Overlay</span>
+                  <span className="stage-pill-value">{debugOverlayEnabled ? 'Visible' : 'Hidden'}</span>
+                </Box>
+              </Box>
+            ) : null}
 
-            <Box className="stage-chrome">
-              <Box className={`stage-pill ${inputsActive ? 'is-active' : ''}`}>
-                <SensorsRoundedIcon fontSize="small" />
-                <span className="stage-pill-label">Stage</span>
-                <span className="stage-pill-value">{liveStatus}</span>
-              </Box>
-              <Box className={`stage-pill ${lastGestureLabel ? 'is-active' : ''}`}>
-                <FrontHandRoundedIcon fontSize="small" />
-                <span className="stage-pill-label">Tracking</span>
-                <span className="stage-pill-value">{currentGestureConfidence}</span>
-              </Box>
-              <Box className={`stage-pill ${debugOverlayEnabled ? 'is-active' : ''}`}>
-                <VisibilityRoundedIcon fontSize="small" />
-                <span className="stage-pill-label">Overlay</span>
-                <span className="stage-pill-value">{debugOverlayEnabled ? 'Visible' : 'Hidden'}</span>
-              </Box>
-            </Box>
+            <IconButton
+              className="stage-ui-toggle"
+              color="inherit"
+              aria-label={cameraUiHidden ? 'Show camera UI' : 'Hide camera UI'}
+              onClick={() => setCameraUiHidden((currentValue) => !currentValue)}
+            >
+              {cameraUiHidden ? <VisibilityRoundedIcon /> : <VisibilityOffRoundedIcon />}
+            </IconButton>
 
             <CameraStage>
               <CameraPreview stream={cameraStream} videoRef={videoRef} />
-              {stageState ? (
+              {!cameraUiHidden && stageState?.tone === 'error' ? (
                 <Box className={`stage-state-card is-${stageState.tone}`}>
                   <Box className="stage-state-icon">{stageState.icon}</Box>
                   <Typography variant="h6">{stageState.title}</Typography>
@@ -188,7 +191,7 @@ export const StudioDashboard = ({
                   </Typography>
                 </Box>
               ) : null}
-              {debugOverlayEnabled ? <GestureOverlay frame={gestureFrame} videoRef={videoRef} /> : null}
+              {debugOverlayEnabled && !cameraUiHidden ? <GestureOverlay frame={gestureFrame} videoRef={videoRef} /> : null}
             </CameraStage>
           </Box>
         </Paper>
@@ -233,7 +236,13 @@ export const StudioDashboard = ({
                 {inputsActive ? 'Inputs Live' : 'Start Inputs'}
               </Button>
               {!recordingActive ? (
-                <Button variant="contained" color="secondary" fullWidth onClick={() => void onStartRecording()} startIcon={<FiberManualRecordRoundedIcon />}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  fullWidth
+                  onClick={() => void onStartRecording()}
+                  startIcon={<FiberManualRecordRoundedIcon sx={{ color: '#ff4d4f' }} />}
+                >
                   Start Recording
                 </Button>
               ) : (
