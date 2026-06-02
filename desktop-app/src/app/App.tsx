@@ -19,6 +19,7 @@ import { useGestureRouter } from './hooks/useGestureRouter';
 import { useGestureTracking } from './hooks/useGestureTracking';
 import { usePersistedPreferences } from './hooks/usePersistedPreferences';
 import { useStudioSession } from './hooks/useStudioSession';
+import { useMediaDevices } from './hooks/useMediaDevices';
 import { ShaderBackdrop } from '../components/ShaderBackdrop';
 import { GestureDetector } from '../features/gestures/GestureDetector';
 import { getGestureMappingWarnings } from '../features/gestures/getGestureMappingWarnings';
@@ -52,6 +53,8 @@ export const App = (): ReactElement => {
   const setThemeMode = useAppStore((state) => state.setThemeMode);
   const setRecordingMode = useAppStore((state) => state.setRecordingMode);
   const setGestureDebugOverlayEnabled = useAppStore((state) => state.setGestureDebugOverlayEnabled);
+  const setPreferredCameraDeviceId = useAppStore((state) => state.setPreferredCameraDeviceId);
+  const setPreferredMicrophoneDeviceId = useAppStore((state) => state.setPreferredMicrophoneDeviceId);
   const setGestureMapping = useAppStore((state) => state.setGestureMapping);
   const addGestureMapping = useAppStore((state) => state.addGestureMapping);
   const removeGestureMapping = useAppStore((state) => state.removeGestureMapping);
@@ -70,10 +73,14 @@ export const App = (): ReactElement => {
     onLoadError: setStatusMessage
   });
 
+  const { cameras, microphones } = useMediaDevices();
+
   const { audioState, startSources, stopSources, startRecording, stopRecording } = useStudioSession({
     cameraStream,
     startCamera,
     stopCamera,
+    preferredCameraDeviceId: settings.preferredCameraDeviceId,
+    preferredMicrophoneDeviceId: settings.preferredMicrophoneDeviceId,
     recordingMode: settings.recordingMode,
     lowPassFrequency,
     highPassFrequency,
@@ -150,9 +157,14 @@ export const App = (): ReactElement => {
               <SettingsScreen
                 settings={settings}
                 panelSx={panelSx}
+                fieldSx={fieldSx}
+                cameras={cameras}
+                microphones={microphones}
                 onSetThemeMode={setThemeMode}
                 onSetRecordingMode={setRecordingMode}
                 onSetGestureDebugOverlayEnabled={setGestureDebugOverlayEnabled}
+                onSetPreferredCameraDeviceId={setPreferredCameraDeviceId}
+                onSetPreferredMicrophoneDeviceId={setPreferredMicrophoneDeviceId}
               />
             ) : (
               <StudioDashboard

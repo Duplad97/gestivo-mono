@@ -15,6 +15,12 @@ const api = {
   },
   savePreferences: (preferences: PersistedAppPreferences): Promise<void> => {
     return ipcRenderer.invoke('preferences:save', preferences);
+  },
+  toggleWindowFullscreen: (): Promise<boolean> => {
+    return ipcRenderer.invoke('window:toggle-fullscreen');
+  },
+  isWindowFullscreen: (): Promise<boolean> => {
+    return ipcRenderer.invoke('window:is-fullscreen');
   }
 };
 

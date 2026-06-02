@@ -1,8 +1,10 @@
-import { useState, type ReactElement, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
 import FrontHandRoundedIcon from '@mui/icons-material/FrontHandRounded';
+import FullscreenExitRoundedIcon from '@mui/icons-material/FullscreenExitRounded';
+import FullscreenRoundedIcon from '@mui/icons-material/FullscreenRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
 import MemoryRoundedIcon from '@mui/icons-material/MemoryRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
@@ -31,6 +33,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography
 } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
@@ -139,12 +142,46 @@ export const StudioDashboard = ({
   const [activeSidebarPanel, setActiveSidebarPanel] = useState<'shortcuts' | 'sound'>('shortcuts');
   const [controlsDialogOpen, setControlsDialogOpen] = useState(false);
   const [cameraUiHidden, setCameraUiHidden] = useState(false);
+  const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
+  const cameraShellRef = useRef<HTMLDivElement | null>(null);
+
+  const toggleStageFullscreen = (): void => {
+    setIsFallbackFullscreen((currentValue) => !currentValue);
+  };
+
+  useEffect(() => {
+    if (!isFallbackFullscreen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsFallbackFullscreen(false);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isFallbackFullscreen]);
+
+  useEffect(() => {
+    document.body.classList.toggle('camera-fallback-fullscreen-active', isFallbackFullscreen);
+
+    return () => {
+      document.body.classList.remove('camera-fallback-fullscreen-active');
+    };
+  }, [isFallbackFullscreen]);
+
+  const isImmersiveCameraMode = isFallbackFullscreen;
 
   return (
     <Box className="dashboard-grid">
       <Box className="stage-stack">
         <Paper className="glass-panel" elevation={0} sx={{ p: 0, borderRadius: '28px' }}>
-          <Box className="camera-shell">
+          <Box ref={cameraShellRef} className={`camera-shell ${isFallbackFullscreen ? 'is-stage-fullscreen' : ''}`}>
             {!cameraUiHidden ? (
               <Box className="stage-chrome">
                 <Box className={`stage-pill ${inputsActive ? 'is-active' : ''}`}>
@@ -173,6 +210,44 @@ export const StudioDashboard = ({
             >
               {cameraUiHidden ? <VisibilityRoundedIcon /> : <VisibilityOffRoundedIcon />}
             </IconButton>
+
+            <IconButton
+              className="stage-fullscreen-toggle"
+              color="inherit"
+              aria-label={isImmersiveCameraMode ? 'Exit fullscreen' : 'Enter fullscreen'}
+              onClick={toggleStageFullscreen}
+            >
+              {isImmersiveCameraMode ? <FullscreenExitRoundedIcon /> : <FullscreenRoundedIcon />}
+            </IconButton>
+
+            {isImmersiveCameraMode ? (
+              <Box className="stage-fullscreen-controls">
+                <Tooltip title={inputsActive ? 'Reset inputs' : 'Start inputs'}>
+                  <IconButton
+                    className="stage-fullscreen-action"
+                    color="inherit"
+                    aria-label={inputsActive ? 'Reset inputs' : 'Start inputs'}
+                    onClick={() => void (inputsActive ? onStopSources() : onStartSources())}
+                  >
+                    {inputsActive ? <RestartAltRoundedIcon /> : <SensorsRoundedIcon />}
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title={recordingActive ? 'Recording active' : 'Start recording'}>
+                  <span>
+                    <IconButton
+                      className="stage-fullscreen-action is-record"
+                      color="inherit"
+                      aria-label="Start recording"
+                      onClick={() => void onStartRecording()}
+                      disabled={recordingActive}
+                    >
+                      <FiberManualRecordRoundedIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
+            ) : null}
 
             <CameraStage>
               <CameraPreview stream={cameraStream} videoRef={videoRef} />

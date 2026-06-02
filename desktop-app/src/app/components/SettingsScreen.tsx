@@ -5,16 +5,33 @@ import GraphicEqRoundedIcon from '@mui/icons-material/GraphicEqRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
-import { Box, Button, Paper, Stack, Switch, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Switch,
+  Typography
+} from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { RecordingMode, ThemeMode, AppSettings } from '../../features/settings/types';
+import type { MediaDeviceOption } from '../hooks/useMediaDevices';
 
 type SettingsScreenProps = {
   settings: AppSettings;
   panelSx: SxProps<Theme>;
+  fieldSx: SxProps<Theme>;
+  cameras: MediaDeviceOption[];
+  microphones: MediaDeviceOption[];
   onSetThemeMode: (themeMode: ThemeMode) => void;
   onSetRecordingMode: (recordingMode: RecordingMode) => void;
   onSetGestureDebugOverlayEnabled: (enabled: boolean) => void;
+  onSetPreferredCameraDeviceId: (deviceId: string | null) => void;
+  onSetPreferredMicrophoneDeviceId: (deviceId: string | null) => void;
 };
 
 const themeModeOptions: Array<{ value: ThemeMode; label: string; icon: ReactElement }> = [
@@ -31,9 +48,14 @@ const recordingModeOptions: Array<{ value: RecordingMode; label: string; descrip
 export const SettingsScreen = ({
   settings,
   panelSx,
+  fieldSx,
+  cameras,
+  microphones,
   onSetThemeMode,
   onSetRecordingMode,
-  onSetGestureDebugOverlayEnabled
+  onSetGestureDebugOverlayEnabled,
+  onSetPreferredCameraDeviceId,
+  onSetPreferredMicrophoneDeviceId
 }: SettingsScreenProps): ReactElement => {
   return (
     <Box className="settings-screen">
@@ -118,6 +140,52 @@ export const SettingsScreen = ({
                 onChange={(_event, checked) => onSetGestureDebugOverlayEnabled(checked)}
               />
             </Box>
+          </Stack>
+        </Paper>
+
+        <Paper className="glass-panel settings-card" elevation={0} sx={panelSx}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography className="app-section-label">Devices</Typography>
+              <Typography variant="h6" sx={{ mt: 0.75 }}>Input routing</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                Pick which hardware Gestivo should use when starting camera and microphone inputs.
+              </Typography>
+            </Box>
+
+            <FormControl fullWidth sx={fieldSx}>
+              <InputLabel id="preferred-camera-device-select">Camera</InputLabel>
+              <Select
+                labelId="preferred-camera-device-select"
+                label="Camera"
+                value={settings.preferredCameraDeviceId ?? ''}
+                onChange={(event) => onSetPreferredCameraDeviceId(event.target.value || null)}
+              >
+                <MenuItem value="">System default camera</MenuItem>
+                {cameras.map((camera) => (
+                  <MenuItem key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth sx={fieldSx}>
+              <InputLabel id="preferred-microphone-device-select">Microphone</InputLabel>
+              <Select
+                labelId="preferred-microphone-device-select"
+                label="Microphone"
+                value={settings.preferredMicrophoneDeviceId ?? ''}
+                onChange={(event) => onSetPreferredMicrophoneDeviceId(event.target.value || null)}
+              >
+                <MenuItem value="">System default microphone</MenuItem>
+                {microphones.map((microphone) => (
+                  <MenuItem key={microphone.deviceId} value={microphone.deviceId}>
+                    {microphone.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Stack>
         </Paper>
       </Box>

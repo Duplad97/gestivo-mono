@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 type CameraState = {
   stream: MediaStream | null;
-  start: () => Promise<MediaStream>;
+  start: (deviceId?: string | null) => Promise<MediaStream>;
   stop: () => void;
   error: string | null;
   isActive: boolean;
@@ -19,17 +19,20 @@ export const useCameraStream = (): CameraState => {
     setStream(null);
   }, []);
 
-  const start = useCallback(async (): Promise<MediaStream> => {
+  const start = useCallback(async (deviceId?: string | null): Promise<MediaStream> => {
     try {
       if (streamRef.current) {
         return streamRef.current;
       }
 
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {})
+      };
+
       const nextStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: videoConstraints,
         audio: false
       });
 

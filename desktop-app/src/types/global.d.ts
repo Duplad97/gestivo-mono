@@ -9,6 +9,8 @@ type GestivoApi = {
   saveRecording: (data: ArrayBuffer, defaultFileName: string) => Promise<SaveResult>;
   loadPreferences: () => Promise<PersistedAppPreferences | null>;
   savePreferences: (preferences: PersistedAppPreferences) => Promise<void>;
+  toggleWindowFullscreen: () => Promise<boolean>;
+  isWindowFullscreen: () => Promise<boolean>;
 };
 
 declare global {

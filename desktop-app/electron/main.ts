@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, session, systemPreferences } from 'electron';
+import { Menu, app, BrowserWindow, dialog, ipcMain, nativeImage, session, systemPreferences } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -416,6 +416,12 @@ const createWindow = async (): Promise<void> => {
   });
   mainWindow = win;
 
+  if (process.platform === 'win32') {
+    Menu.setApplicationMenu(null);
+    win.setMenuBarVisibility(false);
+    win.setAutoHideMenuBar(true);
+  }
+
   win.on('closed', () => {
     if (mainWindow === win) {
       mainWindow = null;
@@ -483,6 +489,23 @@ ipcMain.handle('preferences:load', async (): Promise<PersistedAppPreferences | n
 
 ipcMain.handle('preferences:save', async (_event, preferences: PersistedAppPreferences): Promise<void> => {
   await fs.writeFile(preferencesFilePath(), JSON.stringify(preferences, null, 2), 'utf-8');
+});
+
+ipcMain.handle('window:toggle-fullscreen', (event): boolean => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+
+  if (!win) {
+    return false;
+  }
+
+  const nextFullscreen = !win.isFullScreen();
+  win.setFullScreen(nextFullscreen);
+  return nextFullscreen;
+});
+
+ipcMain.handle('window:is-fullscreen', (event): boolean => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.isFullScreen() : false;
 });
 
 app.whenReady().then(() => {

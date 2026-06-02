@@ -7,8 +7,10 @@ import { nowFileName } from '../config';
 
 type UseStudioSessionParams = {
   cameraStream: MediaStream | null;
-  startCamera: () => Promise<MediaStream>;
+  startCamera: (deviceId?: string | null) => Promise<MediaStream>;
   stopCamera: () => void;
+  preferredCameraDeviceId: string | null;
+  preferredMicrophoneDeviceId: string | null;
   recordingMode: RecordingMode;
   lowPassFrequency: number;
   highPassFrequency: number;
@@ -29,6 +31,8 @@ export const useStudioSession = ({
   cameraStream,
   startCamera,
   stopCamera,
+  preferredCameraDeviceId,
+  preferredMicrophoneDeviceId,
   recordingMode,
   lowPassFrequency,
   highPassFrequency,
@@ -47,12 +51,15 @@ export const useStudioSession = ({
       return micStream;
     }
 
+    const audioConstraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      ...(preferredMicrophoneDeviceId ? { deviceId: { exact: preferredMicrophoneDeviceId } } : {})
+    };
+
     const nextStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      },
+      audio: audioConstraints,
       video: false
     });
 
@@ -65,7 +72,7 @@ export const useStudioSession = ({
 
   const startSources = async (): Promise<void> => {
     try {
-      await Promise.all([startAudio(), startCamera()]);
+      await Promise.all([startAudio(), startCamera(preferredCameraDeviceId)]);
       onStatusMessage('Camera and microphone are live');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not start media sources';
@@ -86,7 +93,7 @@ export const useStudioSession = ({
       await startAudio();
 
       if (recordingMode === 'video' && !cameraStream) {
-        await startCamera();
+        await startCamera(preferredCameraDeviceId);
       }
 
       const processedAudio = audioEngineRef.current.getProcessedAudioStream();

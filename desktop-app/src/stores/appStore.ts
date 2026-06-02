@@ -17,6 +17,8 @@ type AppState = {
   setThemeMode: (value: ThemeMode) => void;
   setRecordingMode: (value: RecordingMode) => void;
   setGestureDebugOverlayEnabled: (value: boolean) => void;
+  setPreferredCameraDeviceId: (value: string | null) => void;
+  setPreferredMicrophoneDeviceId: (value: string | null) => void;
   setGestureMapping: (index: number, mapping: GestureMappingRule) => void;
   addGestureMapping: () => void;
   removeGestureMapping: (index: number) => void;
@@ -26,7 +28,9 @@ type AppState = {
 const defaultSettings: AppSettings = {
   themeMode: 'system',
   enableGestureDebugOverlay: true,
-  recordingMode: 'audio'
+  recordingMode: 'audio',
+  preferredCameraDeviceId: null,
+  preferredMicrophoneDeviceId: null
 };
 
 const normalizeSettings = (settings: AppSettings): AppSettings => {
@@ -92,6 +96,20 @@ export const useAppStore = create<AppState>((set) => ({
       settings: {
         ...state.settings,
         enableGestureDebugOverlay: value
+      }
+    })),
+  setPreferredCameraDeviceId: (value) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        preferredCameraDeviceId: value
+      }
+    })),
+  setPreferredMicrophoneDeviceId: (value) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        preferredMicrophoneDeviceId: value
       }
     })),
   setGestureMapping: (index, mapping) =>

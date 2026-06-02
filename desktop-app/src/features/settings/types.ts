@@ -6,4 +6,6 @@ export type AppSettings = {
   themeMode: ThemeMode;
   enableGestureDebugOverlay: boolean;
   recordingMode: RecordingMode;
+  preferredCameraDeviceId: string | null;
+  preferredMicrophoneDeviceId: string | null;
 };

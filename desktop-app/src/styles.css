@@ -472,6 +472,75 @@ body::before {
     var(--app-stage-shell);
 }
 
+.camera-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.camera-shell:fullscreen .camera-stage {
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.camera-shell:fullscreen video {
+  min-height: 100vh;
+  max-height: none;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.camera-shell:fullscreen .stage-chrome,
+.camera-shell:fullscreen .stage-ui-toggle,
+.camera-shell:fullscreen .stage-fullscreen-toggle,
+.camera-shell:fullscreen .camera-hud,
+.camera-shell:fullscreen .stage-state-card {
+  z-index: 6;
+}
+
+.camera-shell.is-stage-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 0;
+  border-radius: 0;
+  background: #000;
+  z-index: 1400;
+}
+
+.camera-shell.is-stage-fullscreen .camera-stage {
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.camera-shell.is-stage-fullscreen video {
+  min-height: 100vh;
+  max-height: none;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.camera-shell.is-stage-fullscreen .stage-chrome,
+.camera-shell.is-stage-fullscreen .stage-ui-toggle,
+.camera-shell.is-stage-fullscreen .stage-fullscreen-toggle,
+.camera-shell.is-stage-fullscreen .camera-hud,
+.camera-shell.is-stage-fullscreen .stage-state-card {
+  z-index: 6;
+}
+
+body.camera-fallback-fullscreen-active {
+  overflow: hidden;
+}
+
 .camera-stage {
   position: relative;
   overflow: hidden;
@@ -665,6 +734,55 @@ video.is-hidden {
 .stage-pill svg {
   color: rgba(127, 240, 210, 0.88);
   font-size: 0.95rem;
+}
+
+.stage-fullscreen-toggle {
+  position: absolute !important;
+  right: 20px;
+  bottom: 20px;
+  z-index: 3;
+  border: 1px solid var(--app-chip-border) !important;
+  background: var(--app-overlay-surface) !important;
+  color: var(--app-chip-text) !important;
+  backdrop-filter: blur(18px);
+}
+
+.stage-fullscreen-toggle:hover {
+  background: color-mix(in srgb, var(--app-overlay-surface) 84%, var(--app-text-primary) 6%) !important;
+}
+
+.stage-fullscreen-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--app-chip-border);
+  background: var(--app-overlay-strong);
+  backdrop-filter: blur(16px);
+}
+
+.stage-fullscreen-action {
+  border: 1px solid var(--app-chip-border) !important;
+  background: var(--app-overlay-surface) !important;
+  color: var(--app-chip-text) !important;
+}
+
+.stage-fullscreen-action:hover {
+  background: color-mix(in srgb, var(--app-overlay-surface) 84%, var(--app-text-primary) 6%) !important;
+}
+
+.stage-fullscreen-action.is-record {
+  color: #ff6b6b !important;
+}
+
+.stage-fullscreen-action.Mui-disabled {
+  opacity: 0.42 !important;
 }
 
 @media (max-width: 980px) {
@@ -1120,6 +1238,17 @@ video.is-hidden {
     position: static;
     margin-top: 12px;
     max-width: none;
+  }
+
+  .stage-fullscreen-toggle {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .stage-fullscreen-controls {
+    bottom: 12px;
+    gap: 8px;
+    padding: 7px;
   }
 
   .session-inline-setting {
